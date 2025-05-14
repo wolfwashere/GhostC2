@@ -1,6 +1,8 @@
 # 👻 GhostC2
 
-GhostC2 is a modular, encrypted, post-exploitation command-and-control (C2) framework built with Python and Flask. It features real-time WebSocket communication, polymorphic payload generation, operator authentication, and optional `.exe` packaging.
+GhostC2 is a modular, encrypted, post-exploitation command-and-control (C2) framework built with Python and Flask. It features real-time WebSocket communication, polymorphic payload generation, operator authentication, and optional `.exe` packaging. 
+
+Check out the wiki for an Operator Quickstart Guide.
 
 ---
 
