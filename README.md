@@ -53,7 +53,7 @@ python app.py
 
 Visit [http://localhost:8080](http://localhost:8080)
 
-**Login:**
+**Default Login:**
 ```
 Username: admin
 Password: ghostpass123
