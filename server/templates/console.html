@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>GhostC2 Live Console</title>
+    <style>
+        body {
+            background: #111;
+            color: #0f0;
+            font-family: monospace;
+            padding: 20px;
+        }
+        #terminal {
+            background: #000;
+            border: 1px solid #0f0;
+            padding: 10px;
+            height: 300px;
+            overflow-y: scroll;
+            white-space: pre-wrap;
+        }
+        select, input, button {
+            background: #222;
+            color: #0f0;
+            border: 1px solid #0f0;
+            font-family: monospace;
+            padding: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>👻 GhostC2 Live Console</h1>
+    <form id="command-form">
+        <label>Target Host:</label>
+        <select id="host">
+            {% for beacon in hosts %}
+            <option value="{{ beacon }}">{{ beacon }}</option>
+            {% endfor %}
+        </select><br><br>
+        <label>Command:</label>
+        <input type="text" id="cmd" required>
+        <button type="submit">Send</button>
+    </form>
+
+    <pre id="terminal">[+] Console ready.
+</pre>
+
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+    <script>
+        const terminal = document.getElementById("terminal");
+        const form = document.getElementById("command-form");
+        const socket = io();
+
+        form.addEventListener("submit", async function (e) {
+            e.preventDefault();
+            const hostname = document.getElementById("host").value;
+            const command = document.getElementById("cmd").value;
+
+            const res = await fetch("/console_send", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ hostname, command })
+            });
+
+            terminal.innerText += `\n$ ${command}\n[+] Task sent to ${hostname}...\n`;
+            document.getElementById("cmd").value = "";
+        });
+
+        socket.on("console_result", data => {
+            const { hostname, command, result } = data;
+            terminal.innerText += `\n[${hostname}] $ ${command}\n${result}\n`;
+            terminal.scrollTop = terminal.scrollHeight;
+        });
+    </script>
+</body>
+</html>

