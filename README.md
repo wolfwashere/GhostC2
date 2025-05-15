@@ -60,7 +60,6 @@ Password: ghostpass123
 
 
 ```
-### or simply run the setup.sh file.
 ---
 
 ## 👾 Payloads
