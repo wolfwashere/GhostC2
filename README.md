@@ -65,7 +65,7 @@ Password: ghostpass123
 
 ## 👾 Payloads
 
-### ✅ WebSocket Agent *currently being worked on* use payload generator or ghost_payload.py*
+### ✅ WebSocket Agent *currently being worked on use payload generator(!recommeneded) or ghost_payload.py(default payload for testing)*
 ```bash
 python payloads/ghost_socket_payload.py
 ```
