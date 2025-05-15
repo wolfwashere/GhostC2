@@ -57,8 +57,10 @@ Visit [http://localhost:8080](http://localhost:8080)
 ```
 Username: admin
 Password: ghostpass123
-```
 
+
+```
+### or simply run the setup.sh file.
 ---
 
 ## 👾 Payloads
