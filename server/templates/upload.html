@@ -40,11 +40,38 @@
   </form>
 
   {% if success %}
-    <div class="output">
-      <p><strong>File uploaded:</strong> {{ filename }}</p>
-      <p><strong>Drop Command:</strong></p>
-      <code>{{ drop_cmd }}</code>
-    </div>
+  <div class="output">
+    <p><strong>File uploaded:</strong> {{ filename }}</p>
+  
+    <p><strong>Drop Command:</strong></p>
+    <code id="dropCmd">{{ drop_cmd }}</code>
+    <br>
+    <button onclick="copyText('dropCmd')">Copy Drop Command</button>
+  
+    <br><br>
+  
+    <p><strong>Beacon Task Format:</strong></p>
+    <code id="beaconCmd">add_task [hostname] {{ drop_cmd }}</code>
+    <br>
+    <button onclick="copyText('beaconCmd')">Copy Beacon Task</button>
+  </div>  
   {% endif %}
+
+
+    <script>
+    function copyText(id) {
+        const el = document.getElementById(id);
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        document.execCommand("copy");
+        sel.removeAllRanges();
+        alert("Copied!");
+    }
+    </script>
+    
+
 </body>
 </html>
