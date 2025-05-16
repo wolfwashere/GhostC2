@@ -39,7 +39,7 @@ jobs:
           for /f %%f in ('dir /b *.exe') do ren "%%f" "ghost_payload_windows.exe"
 
       - name: Upload Windows Payload
-        uses: actions/upload-artifact@v3.1.2
+        uses: actions/upload-artifact@3e65e2a3a1d1c77a1e6ae28e2056b5c7b87af8aa
         with:
           name: ghost_payload_windows
           path: tools/builds/ghost_payload_windows.exe
