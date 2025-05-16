@@ -12,3 +12,4 @@ flask-socketio
 eventlet
 pycryptodome
 pyinstaller
+impacket
