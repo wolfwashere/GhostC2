@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Upload Payload</title>
+  <style>
+    body {
+      background-color: #000;
+      color: #00ff00;
+      font-family: monospace;
+      padding: 2rem;
+    }
+    input[type="file"] {
+      margin-bottom: 1rem;
+    }
+    button {
+      padding: 0.5rem 1rem;
+      background: #00ff00;
+      border: none;
+      color: black;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .output {
+      margin-top: 2rem;
+      white-space: pre-wrap;
+      background: #111;
+      padding: 1rem;
+      border: 1px solid #00ff00;
+    }
+  </style>
+</head>
+<body>
+  <h1>Upload File Dropper</h1>
+  <form method="POST" enctype="multipart/form-data">
+    <input type="file" name="file" required />
+    <br/>
+    <button type="submit">Upload</button>
+  </form>
+
+  {% if success %}
+    <div class="output">
+      <p><strong>File uploaded:</strong> {{ filename }}</p>
+      <p><strong>Drop Command:</strong></p>
+      <code>{{ drop_cmd }}</code>
+    </div>
+  {% endif %}
+</body>
+</html>
