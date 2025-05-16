@@ -11,3 +11,4 @@ flask-login
 flask-socketio
 eventlet
 pycryptodome
+pyinstaller
