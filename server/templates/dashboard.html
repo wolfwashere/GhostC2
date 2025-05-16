@@ -41,6 +41,8 @@
     <a href="/upload" style="color: #0f0; text-decoration: underline; margin-left: 20px;">→ Upload for File Drop</a>
     <h1>👻 GhostC2 Beacon Dashboard</h1>
 
+    <button id="toggleBtn" onclick="toggleInactive()">Hide Inactive Beacons</button>
+
     <table id="beacon-table">
         <thead>
             <tr>
@@ -108,6 +110,7 @@
     <script>
     let currentBeacon = "";
     let modalOpen = false;
+    let showInactive = true;
 
     async function loadBeacons() {
         const res = await fetch("/api/beacons");
@@ -117,15 +120,19 @@
 
         beacons.forEach(b => {
             const row = document.createElement("tr");
+            let statusClass = "";
             let status;
             if (b.last_seen_seconds < 60) {
                 status = "🟢 Active";
             } else if (b.last_seen_seconds < 300) {
                 status = "🟡 Sleeping";
+                statusClass = "inactive";
             } else {
                 status = "🔴 Dead";
+                statusClass = "inactive";
             }
 
+            row.className = `beacon-row ${statusClass}`;
             row.setAttribute("data-hostname", b.hostname);
             row.onclick = () => showBeaconDetails(b.hostname);
 
@@ -136,8 +143,24 @@
                 <td class="status">${status}</td>
                 <td>${Math.round(b.last_seen_seconds)}s ago</td>
             `;
+
+            if (!showInactive && statusClass === "inactive") {
+                row.style.display = "none";
+            }
+
             body.appendChild(row);
         });
+    }
+
+    function toggleInactive() {
+        showInactive = !showInactive;
+        const rows = document.querySelectorAll(".beacon-row.inactive");
+        rows.forEach(row => {
+            row.style.display = showInactive ? "" : "none";
+        });
+
+        const btn = document.getElementById("toggleBtn");
+        btn.textContent = showInactive ? "Hide Inactive Beacons" : "Show Inactive Beacons";
     }
 
     async function showBeaconDetails(hostname) {

