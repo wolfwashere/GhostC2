@@ -1,0 +1,3 @@
+([('ghost_payload_20250515_213827',
+   '/Users/wolf/GhostC2/tools/builds/ghost_payload_20250515_213827',
+   'EXECUTABLE')],)
