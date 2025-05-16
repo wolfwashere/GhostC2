@@ -105,13 +105,67 @@ python tools/generate_payload.py \
   --exe
 ```
 
-## 🖥️ Operator Console
+## 🖥️ Live Console Terminal
 
-- Live terminal view via `/console`
-- Send commands to selected host
-- Output streams back instantly via WebSocket
+GhostC2 now includes a fully interactive web-based console interface for live beacon tasking and output.
 
 ---
+
+### ✅ Features
+
+- Real-time command input/output per beacon
+- Command and result formatting like a real terminal
+- Preset task dropdown for quick recon commands
+- Host selector for targeting individual beacons
+- WebSocket-powered live updates
+- Direct link from dashboard to console
+
+---
+
+### 📍 Accessing the Console
+
+From the dashboard, click:
+
+```
+→ Open Live Console
+```
+
+Or visit directly:
+
+```
+http://your.c2.ip:8080/console
+```
+
+---
+
+### 🧪 Example Output
+
+```
+$ whoami
+ghost-operator
+
+$ uname -a
+Darwin MacBook-Pro.local 23.6.0 ...
+```
+
+---
+
+### 🧩 Preset Commands
+
+Quick tasks for both Windows and Linux/macOS:
+- `whoami`
+- `ipconfig` / `ifconfig`
+- `systeminfo` / `uname -a`
+- `tasklist` / `ps aux`
+- `netstat` variants
+
+---
+
+### ⏭️ Coming Soon
+
+- File exfiltration via `getfile <path>`
+- Per-host command logs
+- Session tabs for multitarget ops
 
 ### 🎯 Stagers (Initial Access)
 
