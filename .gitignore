@@ -6,4 +6,6 @@ __pycache__/
 venv/
 server/downloads/
 config.json
+builds/
+server/builds/
 
