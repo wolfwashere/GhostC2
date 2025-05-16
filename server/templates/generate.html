@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>GhostC2 Payload Generator</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <style>
+    body {
+      background-color: #000;
+      color: #00ff00;
+      font-family: monospace;
+      padding: 2rem;
+    }
+    h1 {
+      font-size: 1.75rem;
+      margin-bottom: 1.5rem;
+    }
+    label {
+      display: block;
+      margin-top: 1rem;
+    }
+    input[type="text"], select {
+      width: 100%;
+      padding: 0.5rem;
+      margin-top: 0.25rem;
+      background: #111;
+      color: #00ff00;
+      border: 1px solid #00ff00;
+    }
+    input::placeholder {
+      color: #44ff44;
+    }
+    input[type="checkbox"] {
+      margin-right: 0.5rem;
+    }
+    .readonly-field {
+      background-color: #111;
+      color: #55ff55;
+      border: 1px dashed #00ff00;
+    }
+    .button {
+      margin-top: 2rem;
+      padding: 0.75rem 1.5rem;
+      background-color: #00ff00;
+      color: black;
+      font-weight: bold;
+      border: none;
+      cursor: pointer;
+    }
+    .button:hover {
+      background-color: #00cc00;
+    }
+  </style>
+</head>
+<body>
+  <a href="/">&larr; Back to Dashboard</a><br>
+  <h1>Generate Polymorphic Payload</h1>
+  <form id="payload-form" method="POST" action="/generate" enctype="multipart/form-data">
+    <label for="c2url">C2 Beacon URL</label>
+    <input type="text" id="c2url" name="c2url" value="http://localhost:8080/beacon" required />
+
+    <label for="resulturl">Result URL</label>
+    <input type="text" id="resulturl" name="resulturl" value="http://localhost:8080/result" required />
+
+    <label for="filename">Payload Filename (without extension)</label>
+    <input type="text" id="filename" name="filename" placeholder="Leave blank for auto" />
+
+    <label for="fileext">Output File Type</label>
+    <select id="fileext" name="fileext">
+      <option value="py">Python (.py)</option>
+      <option value="exe">Windows Executable (.exe)</option>
+    </select>
+
+    <label for="server-ip">Detected Server IP</label>
+    <input type="text" id="server-ip" class="readonly-field" readonly />
+
+    <label>
+      <input type="checkbox" name="obfuscate" value="true" />
+      Enable Obfuscation
+    </label>
+
+    <label>
+      <input type="checkbox" name="encrypt" value="true" />
+      Use AES-256 Encryption
+    </label>
+
+    <button type="submit" class="button">Generate Payload</button>
+  </form>
+
+  <script>
+    fetch('/api/server-ip')
+      .then(res => res.json())
+      .then(data => {
+        document.getElementById('server-ip').value = data.ip || 'Unavailable';
+      })
+      .catch(() => {
+        document.getElementById('server-ip').value = 'Unavailable';
+      });
+  </script>
+</body>
+</html>
