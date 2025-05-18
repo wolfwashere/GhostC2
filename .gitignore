@@ -8,4 +8,6 @@ server/downloads/
 config.json
 builds/
 server/builds/
-
+*.ps1
+*.bat
+*.exe
