@@ -3,146 +3,279 @@
 <head>
     <title>GhostC2 Dashboard</title>
     <style>
-        body { background: #111; color: #0f0; font-family: monospace; padding: 20px; }
-        h1, h2 { color: #0f0; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #0f0; padding: 8px; text-align: left; }
-        th { background-color: #222; }
-        input, select, button {
-            background: #222;
-            color: #0f0;
-            border: 1px solid #0f0;
-            padding: 5px;
-            font-family: monospace;
+        :root {
+            --accent: #22ff44;
+            --status-glow: 0 0 10px 2px #22ff4499;
         }
-        .form-section { margin-top: 40px; }
-        .status { font-weight: bold; }
-        tr:hover { background: #222; cursor: pointer; }
-
-        .status-dot {
-            height: 10px;
-            width: 10px;
-            border-radius: 50%;
-            display: inline-block;
-            margin-right: 6px;
+        body {
+            background: #111316;
+            color: #e3e3e3;
+            font-family: 'Inter', Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            min-height: 100vh;
         }
-        .dot-active { background-color: #0f0; box-shadow: 0 0 5px #0f0; }
-        .dot-sleeping { background-color: #fa0; box-shadow: 0 0 5px #fa0; }
-        .dot-dead { background-color: #f00; box-shadow: 0 0 5px #f00; }
-
-        .tabs button {
-            background: #222;
-            color: #0f0;
-            border: 1px solid #0f0;
-            padding: 6px 12px;
-            margin-right: 10px;
+        #sidebar {
+            width: 190px;
+            background: #181a1f;
+            border-right: 1.5px solid #222;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            left: 0; top: 0;
+            z-index: 100;
+        }
+        #sidebar .logo {
+            font-size: 1.18em;
+            font-weight: 700;
+            padding: 30px 20px 36px 24px;
+            color: var(--accent);
+            letter-spacing: 0.04em;
+        }
+        #sidebar nav {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        #sidebar a {
+            color: #dadada;
+            text-decoration: none;
+            padding: 13px 30px 13px 24px;
+            font-size: 1em;
+            border-left: 3px solid transparent;
+            font-weight: 500;
+            transition: background 0.12s, border-color 0.14s, color 0.15s;
+        }
+        #sidebar a.active {
+            border-left: 3px solid var(--accent);
+            color: var(--accent);
+            background: #16181d;
+        }
+        #sidebar a:hover {
+            background: #16181d;
+            color: var(--accent);
+        }
+        .theme-switcher {
+            margin: 16px 0 0 24px;
+        }
+        .theme-switcher button {
+            background: transparent;
+            border: none;
             cursor: pointer;
+            font-size: 1em;
+            margin-right: 7px;
+            color: #888;
+            transition: color 0.12s;
         }
-
-        #modal {
+        .theme-switcher button.active, .theme-switcher button:hover {
+            color: var(--accent);
+        }
+        #main {
+            margin-left: 190px;
+            padding: 32px 38px 32px 38px;
+            width: 100%;
+        }
+        h1 {
+            font-size: 1.58em;
+            font-weight: 700;
+            color: #e3e3e3;
+            letter-spacing: 0.01em;
+            margin-bottom: 18px;
+            margin-top: 0;
+        }
+        h2 {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #c8facc;
+            margin-top: 38px;
+            margin-bottom: 16px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #16181d;
+            margin-top: 20px;
+            font-family: 'JetBrains Mono', 'Fira Mono', monospace;
+            font-size: 0.98em;
+        }
+        th, td {
+            border: 1px solid #23262a;
+            padding: 7px 10px;
+            text-align: left;
+        }
+        th {
+            background-color: #191c21;
+            color: #b9f9c2;
+            font-weight: 600;
+            letter-spacing: 0.03em;
+        }
+        tr:hover { background: #191c21; cursor: pointer; }
+        .status-dot {
+            height: 11px;
+            width: 11px;
+            border-radius: 2.7px;
+            display: inline-block;
+            margin-right: 8px;
+            box-shadow: var(--status-glow);
+        }
+        .dot-active { background-color: var(--accent);}
+        .dot-sleeping { background-color: #fa0; box-shadow: 0 0 8px 2px #fa0c; }
+        .dot-dead { background-color: #f00; box-shadow: 0 0 8px 2px #e85858; }
+        input, select, button {
+            background: #181a1f;
+            color: #eee;
+            border: 1px solid #333;
+            padding: 6px 9px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1em;
+            margin-bottom: 8px;
+        }
+        button {
+            cursor: pointer;
+            background: #1b1d22;
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            font-weight: 600;
+            border-radius: 0;
+        }
+        button:hover {
+            background: #17191c;
+            border-color: #c8facc;
+            color: #c8facc;
+        }
+        .form-section { margin-top: 35px; }
+        .tabs button {
+            background: #16181d;
+            color: #b9f9c2;
+            border: 1px solid #23262a;
+            padding: 5px 13px;
+            margin-right: 7px;
+            font-size: 0.98em;
+        }
+        .tabs button:hover, .tabs button.active {
+            color: var(--accent);
+            border-color: var(--accent);
+        }
+        /* MODALS */
+        #modal, #taskModal, #file-browser-modal {
+            border-radius: 0;
+            border: 1.5px solid var(--accent);
+            box-shadow: 0 2px 32px 1px #000a;
+            background: #191c21;
+            color: #e3e3e3;
+        }
+        #modal, #taskModal {
             display: none;
             position: fixed;
             top: 10%;
-            left: 10%;
-            width: 80%;
-            height: 80%;
-            background: #000;
-            border: 2px solid #0f0;
-            padding: 20px;
+            left: 26%;
+            width: 46%;
+            height: 60%;
             overflow-y: scroll;
             z-index: 9999;
+            padding: 22px;
         }
-        #modal h2 { color: #0f0; }
-        #modal-close { float: right; cursor: pointer; color: #f00; font-weight: bold; }
-
-        #taskModal {
-            display: none;
-            position: fixed;
-            top: 20%;
-            left: 25%;
-            width: 50%;
-            background: #111;
-            border: 2px solid #0f0;
-            padding: 20px;
-            z-index: 9999;
+        #modal h2, #taskModal h3 { color: #c8facc; }
+        #modal-close, #taskModal .close, #file-browser-modal .close {
+            float: right;
+            cursor: pointer;
+            color: #ff5b5b;
+            font-weight: bold;
+            font-size: 1.1em;
         }
-        #taskModal h3 { margin-top: 0; }
-        #taskModal .close { float: right; color: #f00; cursor: pointer; }
+        #file-browser-modal {
+            display:none; position:fixed; top:13%; left:25%; width:50%; height:65%; overflow-y:auto; z-index:10000; padding:22px;
+        }
+        #file-browser-title { color: #b9f9c2; margin-bottom: 6px; }
+        #file-browser-path { margin-bottom:12px; color: #aaa; font-size: 0.99em;}
+        #file-browser-table { margin-top:10px; }
     </style>
 </head>
 <body>
-    <a href="/console" style="color: #0f0; text-decoration: underline;">→ Open Live Console</a>
-    <a href="/generate" style="color: #0f0; text-decoration: underline; margin-left: 20px;">→ Generate Payload</a>
-    <a href="/upload" style="color: #0f0; text-decoration: underline; margin-left: 20px;">→ Upload for File Drop</a>
-    <br><br>
-    <form method="GET" action="/generate_ps_payload">
-        <button type="submit">Generate PowerShell Payload</button>
-    </form>
-
-    <h1>👻 GhostC2 Beacon Dashboard</h1>
-    <button id="toggleBtn" onclick="toggleInactive()">Hide Inactive Beacons</button>
-
-    <table id="beacon-table">
-        <thead>
-            <tr>
-                <th>Hostname</th>
-                <th>IP</th>
-                <th>Payload</th>
-                <th>Status</th>
-                <th>Last Seen</th>
-                <th>Browse</th>
-            </tr>
-        </thead>
-        <tbody id="beacon-body">
-            <!-- Populated by JS -->
-        </tbody>
-    </table>
-
-    <div class="form-section">
-        <h2>Add New Task</h2>
-        <form method="POST" action="/add_task">
-            Hostname: <input type="text" name="hostname" required><br><br>
-            Command: <input type="text" name="command" required><br><br>
-            <button type="submit">Send Task</button>
-        </form>
-    </div>
-
-    <div class="form-section">
-        <h2>Task History</h2>
-        <div class="tabs">
-            <button onclick="filterTasksByActiveBeacons()">🟢 Active Beacon Tasks</button>
-            <button onclick="filterTasks('all')">📋 All</button>
-            <button onclick="filterTasks('pending')">🕐 Pending</button>
-            <button onclick="filterTasks('dispatched')">📤 Dispatched</button>
-            <button onclick="filterTasks('done')">✅ Done</button>
+    <div id="sidebar">
+        <div class="logo">GhostC2</div>
+        <nav>
+            <a href="/" class="active">Dashboard</a>
+            <a href="/console">Live Console</a>
+            <a href="/generate">Generate Payload</a>
+            <a href="/upload">Upload</a>
+        </nav>
+        <div class="theme-switcher">
+            <button onclick="setTheme('green')" class="active">🟢</button>
+            <button onclick="setTheme('orange')">🟠</button>
+            <button onclick="setTheme('blue')">🔵</button>
+            <button onclick="setTheme('red')">🔴</button>
         </div>
-        <table id="task-table">
+    </div>
+    <div id="main">
+        <h1>GhostC2 Beacon Dashboard</h1>
+        <button id="toggleBtn" onclick="toggleInactive()">Hide Inactive Beacons</button>
+
+        <table id="beacon-table">
             <thead>
                 <tr>
-                    <th>ID</th>
                     <th>Hostname</th>
-                    <th>Command</th>
+                    <th>IP</th>
+                    <th>Payload</th>
                     <th>Status</th>
-                    <th>Result</th>
+                    <th>Last Seen</th>
+                    <th>Browse</th>
                 </tr>
             </thead>
-            <tbody>
-                {% for task in tasks %}
-                <tr onclick="openTaskModal('{{ task[0] }}', '{{ task[1] }}', '{{ task[2] }}', '{{ task[3] }}', `{{ task[4] | replace('\n', '\\n') }}`)">
-                    <td>{{ task[0] }}</td>
-                    <td>{{ task[1] }}</td>
-                    <td>{{ task[2] }}</td>
-                    <td>{{ task[3] }}</td>
-                    <td><pre>{{ task[4] }}</pre></td>
-                </tr>
-                {% endfor %}
+            <tbody id="beacon-body">
+                <!-- Populated by JS -->
             </tbody>
         </table>
+
+        <div class="form-section">
+            <h2>Add New Task</h2>
+            <form method="POST" action="/add_task">
+                Hostname: <input type="text" name="hostname" required><br>
+                Command: <input type="text" name="command" required><br>
+                <button type="submit">Send Task</button>
+            </form>
+        </div>
+
+        <div class="form-section">
+            <h2>Task History</h2>
+            <div class="tabs">
+                <button onclick="filterTasksByActiveBeacons()">Active Beacon Tasks</button>
+                <button onclick="filterTasks('all')" class="active">All</button>
+                <button onclick="filterTasks('pending')">Pending</button>
+                <button onclick="filterTasks('dispatched')">Dispatched</button>
+                <button onclick="filterTasks('done')">Done</button>
+            </div>
+            <table id="task-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Hostname</th>
+                        <th>Command</th>
+                        <th>Status</th>
+                        <th>Result</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for task in tasks %}
+                    <tr onclick="openTaskModal('{{ task[0] }}', '{{ task[1] }}', '{{ task[2] }}', '{{ task[3] }}', `{{ task[4] | replace('\n', '\\n') }}`)">
+                        <td>{{ task[0] }}</td>
+                        <td>{{ task[1] }}</td>
+                        <td>{{ task[2] }}</td>
+                        <td>{{ task[3] }}</td>
+                        <td><pre>{{ task[4] }}</pre></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 
+    <!-- MODALS -->
     <div id="taskModal">
         <div class="close" onclick="document.getElementById('taskModal').style.display='none'">[X]</div>
-        <h3>📄 Task Detail</h3>
+        <h3>Task Detail</h3>
         <p><strong>ID:</strong> <span id="t-id"></span></p>
         <p><strong>Hostname:</strong> <span id="t-host"></span></p>
         <p><strong>Command:</strong> <span id="t-cmd"></span></p>
@@ -165,233 +298,253 @@
         </div>
     </div>
 
-    <script>
-    let currentBeacon = "";
-    let modalOpen = false;
-    let showInactive = true;
-
-    function toggleInactive() {
-        showInactive = !showInactive;
-        document.querySelectorAll(".beacon-row.inactive").forEach(row => {
-            row.style.display = showInactive ? "" : "none";
-        });
-        document.getElementById("toggleBtn").textContent = showInactive ? "Hide Inactive Beacons" : "Show Inactive Beacons";
-    }
-
-    async function loadBeacons() {
-        const res = await fetch("/api/beacons");
-        const beacons = await res.json();
-        const body = document.getElementById("beacon-body");
-        body.innerHTML = "";
-
-        beacons.forEach(b => {
-            const row = document.createElement("tr");
-            let statusClass = "";
-            let statusDot = "";
-
-            if (b.last_seen_seconds < 60) {
-                statusDot = '<span class="status-dot dot-active"></span>Active';
-            } else if (b.last_seen_seconds < 300) {
-                statusDot = '<span class="status-dot dot-sleeping"></span>Sleeping';
-                statusClass = "inactive";
-            } else {
-                statusDot = '<span class="status-dot dot-dead"></span>Dead';
-                statusClass = "inactive";
-            }
-
-            row.className = `beacon-row ${statusClass}`;
-            row.setAttribute("data-hostname", b.hostname);
-            row.onclick = (e) => {
-            // Only open details modal if user didn't click a button inside the row
-                if (e.target.tagName !== 'BUTTON') showBeaconDetails(b.hostname);
-            };
-
-
-            row.innerHTML = `
-                <td>${b.hostname}</td>
-                <td>${b.ip}</td>
-                <td>${b.payload}</td>
-                <td class="status">${statusDot}</td>
-                <td>${Math.round(b.last_seen_seconds)}s ago</td>
-                <td>
-                <button onclick="openFileBrowser('${b.hostname}')">📁 Browse</button>
-                </td>
-            `;
-
-            if (!showInactive && statusClass === "inactive") {
-                row.style.display = "none";
-            }
-
-            body.appendChild(row);
-        });
-    }
-
-    async function showBeaconDetails(hostname) {
-        currentBeacon = hostname;
-        modalOpen = true;
-        const res = await fetch(`/api/beacon/${hostname}`);
-        const data = await res.json();
-        document.getElementById("modal-title").textContent = `Beacon: ${hostname}`;
-
-        let html = `<p><strong>IP:</strong> ${data.ip}</p>`;
-        html += `<p><strong>Last Seen:</strong> ${data.timestamp}</p>`;
-        html += `<p><strong>Payload:</strong> ${data.payload}</p>`;
-
-        document.getElementById("modal-content").innerHTML = html;
-        document.getElementById("modal").style.display = "block";
-        loadShellOutput();
-    }
-
-    function sendShellCommand() {
-        const input = document.getElementById("shell-input").value;
-        if (!input || !currentBeacon) return;
-
-        fetch("/console_send", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ hostname: currentBeacon, command: input })
-        }).then(() => {
-            document.getElementById("shell-input").value = "";
-            document.getElementById("shell-output").textContent = "[+] Command sent. Awaiting result...";
-            pollShellOutput(0);
-        });
-    }
-
-    function pollShellOutput(attempts) {
-        fetch(`/console_output?hostname=${currentBeacon}`)
-            .then(res => res.text())
-            .then(txt => {
-                const outputBox = document.getElementById("shell-output");
-                if (txt.includes("[+] No output yet...") && attempts < 15) {
-                    setTimeout(() => pollShellOutput(attempts + 1), 2000);
-                } else {
-                    outputBox.textContent = txt;
-                }
-            });
-    }
-
-    function loadShellOutput() {
-        fetch(`/console_output?hostname=${currentBeacon}`)
-            .then(res => res.text())
-            .then(txt => {
-                document.getElementById("shell-output").textContent = txt;
-            });
-    }
-
-    function openTaskModal(id, host, cmd, status, result) {
-        document.getElementById("t-id").textContent = id;
-        document.getElementById("t-host").textContent = host;
-        document.getElementById("t-cmd").textContent = cmd;
-        document.getElementById("t-status").textContent = status;
-        document.getElementById("t-result").textContent = result;
-        document.getElementById("taskModal").style.display = "block";
-    }
-
-    function filterTasks(status) {
-        const rows = document.querySelectorAll("#task-table tbody tr");
-        rows.forEach(row => {
-            const rowStatus = row.children[3].textContent.trim().toLowerCase();
-            if (status === "all" || rowStatus === status.toLowerCase()) {
-                row.style.display = "";
-            } else {
-                row.style.display = "none";
-            }
-        });
-    }
-
-    async function filterTasksByActiveBeacons() {
-        const beaconRes = await fetch("/api/beacons");
-        const beacons = await beaconRes.json();
-        const activeHosts = beacons
-            .filter(b => b.last_seen_seconds < 60)
-            .map(b => b.hostname);
-
-        const rows = document.querySelectorAll("#task-table tbody tr");
-        rows.forEach(row => {
-            const hostname = row.children[1].textContent.trim();
-            row.style.display = activeHosts.includes(hostname) ? "" : "none";
-        });
-    }
-
-
-    setInterval(() => {
-        loadBeacons();
-        if (modalOpen && currentBeacon) showBeaconDetails(currentBeacon);
-    }, 5000);
-
-    window.onload = loadBeacons;
-
-
-    let currentBrowseHost = null;
-let currentBrowsePath = null;
-
-function openFileBrowser(hostname, path=null) {
-    event && event.stopPropagation && event.stopPropagation(); // So clicking doesn't open beacon modal
-    currentBrowseHost = hostname;
-    currentBrowsePath = path || (navigator.platform.startsWith('Win') ? 'C:\\' : '/');
-    fetch('/api/browse', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({hostname: hostname, path: currentBrowsePath})
-    }).then(() => {
-        setTimeout(() => fetchBrowseResult(hostname), 2000);
-    });
-    document.getElementById('file-browser-title').textContent = `File Browser (${hostname})`;
-    document.getElementById('file-browser-modal').style.display = 'block';
-    document.getElementById('file-browser-table').innerHTML = '<tr><td>Loading...</td></tr>';
-}
-
-function fetchBrowseResult(hostname) {
-    fetch(`/api/browse_result/${hostname}`)
-        .then(res => res.json())
-        .then(data => {
-            if (data.entries) {
-                renderFileBrowser(data.path, data.entries);
-            } else if (data.error) {
-                document.getElementById('file-browser-table').innerHTML = `<tr><td>${data.error}</td></tr>`;
-            } else {
-                setTimeout(() => fetchBrowseResult(hostname), 2000);
-            }
-        });
-}
-
-function renderFileBrowser(path, entries) {
-    currentBrowsePath = path;
-    document.getElementById('file-browser-path').textContent = path;
-    let rows = '';
-    // Up directory support
-    if ((path !== '/' && !path.match(/^([A-Za-z]:\\|[A-Za-z]:\\\\)$/))) {
-        let parent;
-        if (path.includes('\\')) {
-            parent = path.replace(/\\[^\\]+\\?$/, '\\');
-        } else {
-            parent = path.replace(/\/[^\/]+\/?$/, '/');
-        }
-        rows += `<tr><td colspan=3><a href="#" style="color:#0ff;" onclick="openFileBrowser(currentBrowseHost, '${parent}'); return false;">.. (Up)</a></td></tr>`;
-    }
-    for (let entry of entries) {
-        if (entry.type === 'folder') {
-            let sep = (path.endsWith('\\') || path.endsWith('/')) ? '' : (path.includes('\\') ? '\\' : '/');
-            let nextPath = path + sep + entry.name + (path.includes('\\') ? '\\' : '/');
-            rows += `<tr><td>📁</td><td><a href="#" style="color:#0ff;" onclick="openFileBrowser(currentBrowseHost, '${nextPath}'); return false;">${entry.name}</a></td><td>Folder</td></tr>`;
-        } else {
-            rows += `<tr><td>📄</td><td>${entry.name}</td><td>${entry.size} bytes</td></tr>`;
-        }
-    }
-    document.getElementById('file-browser-table').innerHTML = rows;
-}
-
-function closeFileBrowser() {
-    document.getElementById('file-browser-modal').style.display = 'none';
-}
-
-    </script>
-
-    <div id="file-browser-modal" style="display:none; position:fixed; top:10%; left:20%; width:60%; height:70%; background:#111; border:2px solid #0f0; color:#0f0; overflow-y:auto; z-index:10000; padding:20px;">
-        <div style="float:right; cursor:pointer; color:#f00; font-weight:bold;" onclick="closeFileBrowser()">[X]</div>
+    <div id="file-browser-modal">
+        <div class="close" onclick="closeFileBrowser()">[X]</div>
         <h2 id="file-browser-title">File Browser</h2>
-        <div id="file-browser-path" style="margin-bottom:12px;"></div>
+        <div id="file-browser-path"></div>
         <table style="width:100%; margin-top:10px;" id="file-browser-table"></table>
     </div>    
+
+    <script>
+        // Theme Switcher
+        function setTheme(theme) {
+            let vars = {
+                green:  ["#22ff44", "0 0 10px 2px #22ff4499"],
+                orange: ["#ff9a00", "0 0 10px 2px #ff9a0099"],
+                blue:   ["#0af",    "0 0 10px 2px #0af8"],
+                red:    ["#f33",    "0 0 10px 2px #f338"]
+            };
+            if(vars[theme]) {
+                document.documentElement.style.setProperty('--accent', vars[theme][0]);
+                document.documentElement.style.setProperty('--status-glow', vars[theme][1]);
+                localStorage.setItem("ghostc2-theme", theme);
+            }
+        }
+        window.onload = function() {
+            let saved = localStorage.getItem("ghostc2-theme");
+            if (saved) setTheme(saved);
+            loadBeacons();
+        };
+
+            let currentBeacon = "";
+            let modalOpen = false;
+            let showInactive = false; // Hide inactive by default
+
+            function toggleInactive() {
+                showInactive = !showInactive;
+                document.querySelectorAll(".beacon-row.inactive").forEach(row => {
+                    row.style.display = showInactive ? "" : "none";
+                });
+                document.getElementById("toggleBtn").textContent = showInactive ? "Hide Inactive Beacons" : "Show Inactive Beacons";
+            }
+
+            window.onload = function() {
+                showInactive = false;
+                document.getElementById("toggleBtn").textContent = "Show Inactive Beacons";
+                loadBeacons();
+            };
+
+        async function loadBeacons() {
+            const res = await fetch("/api/beacons");
+            const beacons = await res.json();
+            const body = document.getElementById("beacon-body");
+            body.innerHTML = "";
+
+            beacons.forEach(b => {
+                const row = document.createElement("tr");
+                let statusClass = "";
+                let statusDot = "";
+
+                if (b.last_seen_seconds < 60) {
+                    statusDot = '<span class="status-dot dot-active"></span>Active';
+                } else if (b.last_seen_seconds < 300) {
+                    statusDot = '<span class="status-dot dot-sleeping"></span>Sleeping';
+                    statusClass = "inactive";
+                } else {
+                    statusDot = '<span class="status-dot dot-dead"></span>Dead';
+                    statusClass = "inactive";
+                }
+
+                row.className = `beacon-row ${statusClass}`;
+                row.setAttribute("data-hostname", b.hostname);
+                row.onclick = (e) => {
+                    if (e.target.tagName !== 'BUTTON') showBeaconDetails(b.hostname);
+                };
+
+                row.innerHTML = `
+                    <td>${b.hostname}</td>
+                    <td>${b.ip}</td>
+                    <td>${b.payload}</td>
+                    <td class="status">${statusDot}</td>
+                    <td>${Math.round(b.last_seen_seconds)}s ago</td>
+                    <td>
+                        <button onclick="openFileBrowser('${b.hostname}'); event.stopPropagation();">Browse</button>
+                    </td>
+                `;
+
+                if (!showInactive && statusClass === "inactive") {
+                    row.style.display = "none";
+                }
+
+                body.appendChild(row);
+            });
+        }
+
+        async function showBeaconDetails(hostname) {
+            currentBeacon = hostname;
+            modalOpen = true;
+            const res = await fetch(`/api/beacon/${hostname}`);
+            const data = await res.json();
+            document.getElementById("modal-title").textContent = `Beacon: ${hostname}`;
+
+            let html = `<p><strong>IP:</strong> ${data.ip}</p>`;
+            html += `<p><strong>Last Seen:</strong> ${data.timestamp}</p>`;
+            html += `<p><strong>Payload:</strong> ${data.payload}</p>`;
+
+            document.getElementById("modal-content").innerHTML = html;
+            document.getElementById("modal").style.display = "block";
+            loadShellOutput();
+        }
+
+        function sendShellCommand() {
+            const input = document.getElementById("shell-input").value;
+            if (!input || !currentBeacon) return;
+
+            fetch("/console_send", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ hostname: currentBeacon, command: input })
+            }).then(() => {
+                document.getElementById("shell-input").value = "";
+                document.getElementById("shell-output").textContent = "[+] Command sent. Awaiting result...";
+                pollShellOutput(0);
+            });
+        }
+
+        function pollShellOutput(attempts) {
+            fetch(`/console_output?hostname=${currentBeacon}`)
+                .then(res => res.text())
+                .then(txt => {
+                    const outputBox = document.getElementById("shell-output");
+                    if (txt.includes("[+] No output yet...") && attempts < 15) {
+                        setTimeout(() => pollShellOutput(attempts + 1), 2000);
+                    } else {
+                        outputBox.textContent = txt;
+                    }
+                });
+        }
+
+        function loadShellOutput() {
+            fetch(`/console_output?hostname=${currentBeacon}`)
+                .then(res => res.text())
+                .then(txt => {
+                    document.getElementById("shell-output").textContent = txt;
+                });
+        }
+
+        function openTaskModal(id, host, cmd, status, result) {
+            document.getElementById("t-id").textContent = id;
+            document.getElementById("t-host").textContent = host;
+            document.getElementById("t-cmd").textContent = cmd;
+            document.getElementById("t-status").textContent = status;
+            document.getElementById("t-result").textContent = result;
+            document.getElementById("taskModal").style.display = "block";
+        }
+
+        function filterTasks(status) {
+            const rows = document.querySelectorAll("#task-table tbody tr");
+            rows.forEach(row => {
+                const rowStatus = row.children[3].textContent.trim().toLowerCase();
+                if (status === "all" || rowStatus === status.toLowerCase()) {
+                    row.style.display = "";
+                } else {
+                    row.style.display = "none";
+                }
+            });
+        }
+
+        async function filterTasksByActiveBeacons() {
+            const beaconRes = await fetch("/api/beacons");
+            const beacons = await beaconRes.json();
+            const activeHosts = beacons
+                .filter(b => b.last_seen_seconds < 60)
+                .map(b => b.hostname);
+
+            const rows = document.querySelectorAll("#task-table tbody tr");
+            rows.forEach(row => {
+                const hostname = row.children[1].textContent.trim();
+                row.style.display = activeHosts.includes(hostname) ? "" : "none";
+            });
+        }
+
+        setInterval(() => {
+            loadBeacons();
+            if (modalOpen && currentBeacon) showBeaconDetails(currentBeacon);
+        }, 5000);
+
+        // FILE BROWSER
+        let currentBrowseHost = null;
+        let currentBrowsePath = null;
+
+        function openFileBrowser(hostname, path=null) {
+            event && event.stopPropagation && event.stopPropagation();
+            currentBrowseHost = hostname;
+            currentBrowsePath = path || (navigator.platform.startsWith('Win') ? 'C:\\' : '/');
+            fetch('/api/browse', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({hostname: hostname, path: currentBrowsePath})
+            }).then(() => {
+                setTimeout(() => fetchBrowseResult(hostname), 2000);
+            });
+            document.getElementById('file-browser-title').textContent = `File Browser (${hostname})`;
+            document.getElementById('file-browser-modal').style.display = 'block';
+            document.getElementById('file-browser-table').innerHTML = '<tr><td>Loading...</td></tr>';
+        }
+
+        function fetchBrowseResult(hostname) {
+            fetch(`/api/browse_result/${hostname}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.entries) {
+                        renderFileBrowser(data.path, data.entries);
+                    } else if (data.error) {
+                        document.getElementById('file-browser-table').innerHTML = `<tr><td>${data.error}</td></tr>`;
+                    } else {
+                        setTimeout(() => fetchBrowseResult(hostname), 2000);
+                    }
+                });
+        }
+
+        function renderFileBrowser(path, entries) {
+            currentBrowsePath = path;
+            document.getElementById('file-browser-path').textContent = path;
+            let rows = '';
+            // Up directory support
+            if ((path !== '/' && !path.match(/^([A-Za-z]:\\|[A-Za-z]:\\\\)$/))) {
+                let parent;
+                if (path.includes('\\')) {
+                    parent = path.replace(/\\[^\\]+\\?$/, '\\');
+                } else {
+                    parent = path.replace(/\/[^\/]+\/?$/, '/');
+                }
+                rows += `<tr><td colspan=3><a href="#" style="color:var(--accent);" onclick="openFileBrowser(currentBrowseHost, '${parent}'); return false;">.. (Up)</a></td></tr>`;
+            }
+            for (let entry of entries) {
+                if (entry.type === 'folder') {
+                    let sep = (path.endsWith('\\') || path.endsWith('/')) ? '' : (path.includes('\\') ? '\\' : '/');
+                    let nextPath = path + sep + entry.name + (path.includes('\\') ? '\\' : '/');
+                    rows += `<tr><td>📁</td><td><a href="#" style="color:var(--accent);" onclick="openFileBrowser(currentBrowseHost, '${nextPath}'); return false;">${entry.name}</a></td><td>Folder</td></tr>`;
+                } else {
+                    rows += `<tr><td>📄</td><td>${entry.name}</td><td>${entry.size} bytes</td></tr>`;
+                }
+            }
+            document.getElementById('file-browser-table').innerHTML = rows;
+        }
+
+        function closeFileBrowser() {
+            document.getElementById('file-browser-modal').style.display = 'none';
+        }
+    </script>
 </body>
 </html>

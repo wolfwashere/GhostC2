@@ -5,82 +5,226 @@
     <title>GhostC2 Live Console</title>
     <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
     <style>
+        :root {
+            --accent: #22ff44;
+            --status-glow: 0 0 10px 2px #22ff4499;
+        }
         body {
-            background: #000;
-            color: #0f0;
-            font-family: monospace;
-            padding: 20px;
+            background: #111316;
+            color: #e3e3e3;
+            font-family: 'Inter', Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            min-height: 100vh;
+        }
+        #sidebar {
+            width: 190px;
+            background: #181a1f;
+            border-right: 1.5px solid #222;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            left: 0; top: 0;
+            z-index: 100;
+        }
+        #sidebar .logo {
+            font-size: 1.18em;
+            font-weight: 700;
+            padding: 30px 20px 36px 24px;
+            color: var(--accent);
+            letter-spacing: 0.04em;
+        }
+        #sidebar nav {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        #sidebar a {
+            color: #dadada;
+            text-decoration: none;
+            padding: 13px 30px 13px 24px;
+            font-size: 1em;
+            border-left: 3px solid transparent;
+            font-weight: 500;
+            transition: background 0.12s, border-color 0.14s, color 0.15s;
+        }
+        #sidebar a.active {
+            border-left: 3px solid var(--accent);
+            color: var(--accent);
+            background: #16181d;
+        }
+        #sidebar a:hover {
+            background: #16181d;
+            color: var(--accent);
+        }
+        .theme-switcher {
+            margin: 16px 0 0 24px;
+        }
+        .theme-switcher button {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-size: 1em;
+            margin-right: 7px;
+            color: #888;
+            transition: color 0.12s;
+        }
+        .theme-switcher button.active, .theme-switcher button:hover {
+            color: var(--accent);
+        }
+        #main {
+            margin-left: 190px;
+            padding: 32px 38px 32px 38px;
+            width: 100%;
+        }
+        h2 {
+            font-size: 1.36em;
+            font-weight: 700;
+            color: #e3e3e3;
+            letter-spacing: 0.01em;
+            margin-top: 0;
+            margin-bottom: 16px;
+        }
+        a {
+            color: var(--accent);
+            text-decoration: underline;
+            display: inline-block;
+            margin-bottom: 14px;
+            font-size: 0.98em;
+        }
+        label {
+            color: #b9f9c2;
+            margin-right: 8px;
+        }
+        select, button, input {
+            background: #181a1f;
+            color: #eee;
+            border: 1px solid #333;
+            padding: 6px 9px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1em;
+            margin-bottom: 8px;
+            margin-right: 5px;
+        }
+        button {
+            cursor: pointer;
+            background: #1b1d22;
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            font-weight: 600;
+            border-radius: 0;
+        }
+        button:hover {
+            background: #17191c;
+            border-color: #c8facc;
+            color: #c8facc;
         }
         #terminal {
-            background: #111;
-            padding: 10px;
-            height: 300px;
+            background: #181a1f;
+            padding: 14px;
+            height: 350px;
             overflow-y: auto;
-            border: 1px solid #0f0;
-            margin-bottom: 10px;
+            border: 1.5px solid #23262a;
+            margin-bottom: 15px;
+            font-family: 'JetBrains Mono', 'Fira Mono', monospace;
+            font-size: 1em;
+            border-radius: 0;
+            box-shadow: 0 1px 10px 0 #000b;
         }
         #input {
             width: 100%;
-            background: #000;
-            color: #0f0;
-            border: 1px solid #0f0;
-            padding: 10px;
-        }
-        select, button {
-            background: #000;
-            color: #0f0;
-            border: 1px solid #0f0;
-            padding: 5px;
-            margin: 5px 5px 10px 0;
-        }
-        a {
-            color: #0f0;
-            text-decoration: underline;
-            display: inline-block;
+            background: #16181d;
+            color: var(--accent);
+            border: 1.5px solid var(--accent);
+            padding: 11px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1em;
+            border-radius: 0;
+            outline: none;
             margin-bottom: 10px;
         }
+        #input:focus {
+            border-color: #c8facc;
+            color: #c8facc;
+        }
         .console-cmd {
-            color: #0f0;
+            color: var(--accent);
             margin: 0;
         }
         .console-result {
-            color: #ccffcc;
+            color: #c8facc;
             margin: 0 0 12px 0;
         }
     </style>
 </head>
 <body>
-    <h2>Live Beacon Console</h2>
+    <div id="sidebar">
+        <div class="logo">GhostC2</div>
+        <nav>
+            <a href="/">Dashboard</a>
+            <a href="/console" class="active">Live Console</a>
+            <a href="/generate">Generate Payload</a>
+            <a href="/upload">Upload</a>
+        </nav>
+        <div class="theme-switcher">
+            <button onclick="setTheme('green')" class="active">🟢</button>
+            <button onclick="setTheme('orange')">🟠</button>
+            <button onclick="setTheme('blue')">🔵</button>
+            <button onclick="setTheme('red')">🔴</button>
+        </div>
+    </div>
+    <div id="main">
+        <h2>Live Beacon Console</h2>
+        <a href="/">&larr; Back to Dashboard</a><br>
 
-    <a href="/">&larr; Back to Dashboard</a><br>
+        <label for="hostSelect">Select Host:</label>
+        <select id="hostSelect"></select>
 
-    <label for="hostSelect">Select Host:</label>
-    <select id="hostSelect"></select>
+        <label for="presetTasks">Quick Tasks:</label>
+        <select id="presetTasks">
+            <option value="">-- select --</option>
+            <optgroup label="Windows">
+                <option value="whoami">whoami</option>
+                <option value="ipconfig">ipconfig</option>
+                <option value="systeminfo">systeminfo</option>
+                <option value="netstat -ano">netstat -ano</option>
+                <option value="tasklist">tasklist</option>
+            </optgroup>
+            <optgroup label="Linux/macOS">
+                <option value="whoami">whoami</option>
+                <option value="ifconfig">ifconfig</option>
+                <option value="uname -a">uname -a</option>
+                <option value="ps aux">ps aux</option>
+                <option value="netstat -tulnp">netstat -tulnp</option>
+            </optgroup>
+        </select>
+        <button onclick="sendPreset()">Send</button>
 
-    <label for="presetTasks">Quick Tasks:</label>
-    <select id="presetTasks">
-        <option value="">-- select --</option>
-        <optgroup label="Windows">
-            <option value="whoami">whoami</option>
-            <option value="ipconfig">ipconfig</option>
-            <option value="systeminfo">systeminfo</option>
-            <option value="netstat -ano">netstat -ano</option>
-            <option value="tasklist">tasklist</option>
-        </optgroup>
-        <optgroup label="Linux/macOS">
-            <option value="whoami">whoami</option>
-            <option value="ifconfig">ifconfig</option>
-            <option value="uname -a">uname -a</option>
-            <option value="ps aux">ps aux</option>
-            <option value="netstat -tulnp">netstat -tulnp</option>
-        </optgroup>
-    </select>
-    <button onclick="sendPreset()">Send</button>
-
-    <div id="terminal"></div>
-    <input id="input" placeholder="Enter command and press Enter">
-
+        <div id="terminal"></div>
+        <input id="input" placeholder="Enter command and press Enter">
+    </div>
     <script>
+        // Theme Switcher
+        function setTheme(theme) {
+            let vars = {
+                green:  ["#22ff44", "0 0 10px 2px #22ff4499"],
+                orange: ["#ff9a00", "0 0 10px 2px #ff9a0099"],
+                blue:   ["#0af",    "0 0 10px 2px #0af8"],
+                red:    ["#f33",    "0 0 10px 2px #f338"]
+            };
+            if(vars[theme]) {
+                document.documentElement.style.setProperty('--accent', vars[theme][0]);
+                document.documentElement.style.setProperty('--status-glow', vars[theme][1]);
+                localStorage.setItem("ghostc2-theme", theme);
+            }
+        }
+        window.onload = function() {
+            let saved = localStorage.getItem("ghostc2-theme");
+            if (saved) setTheme(saved);
+        };
+
         const socket = io();
         const input = document.getElementById('input');
         const terminal = document.getElementById('terminal');
@@ -94,7 +238,6 @@
         fetch('/console_data')
             .then(res => res.json())
             .then(data => {
-                console.log("Hosts fetched:", data.hosts);
                 data.hosts.forEach(h => {
                     const opt = document.createElement('option');
                     opt.value = opt.textContent = h;
@@ -129,7 +272,6 @@
         }
 
         socket.on('console_result', data => {
-            console.log("[console_result]", data);
             const selectedHost = hostSelect.value;
             if (data.hostname === selectedHost) {
                 const cmdLine = document.createElement('pre');
@@ -143,8 +285,6 @@
                 terminal.appendChild(cmdLine);
                 terminal.appendChild(resultLine);
                 terminal.scrollTop = terminal.scrollHeight;
-            } else {
-                console.log(`[console_result] skipped — ${data.hostname} != ${selectedHost}`);
             }
         });
     </script>
