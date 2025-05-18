@@ -31,17 +31,22 @@ Check out the wiki for an Operator Quickstart Guide.
 
 ```
 GhostC2/
-├── builds/                 # Compiled payloads (.py, .exe)
-├── output/                 # (Optional legacy output dir)
-├── payloads/               # WebSocket and polling Python agents
-│   └── ghost_socket_payload.py
+├── builds/                     # Compiled payloads (.py, .exe)
+├── downloads/                  # Exfiltrated files from agents
+├── output/                     # (Optional legacy output dir)
+├── payloads/                   # WebSocket and polling Python agents
+│   ├── ghost_socket_payload.py
+│   └── ...                     # (other agent scripts)
 ├── server/
-│   ├── app.py              # Main Flask + SocketIO server
-│   └── templates/          # HTML templates for dashboard, console, login
+│   ├── app.py                  # Main Flask + SocketIO server
+│   ├── ps_handler.py           # PowerShell reverse shell TCP listener
+│   ├── templates/              # HTML templates for dashboard, console, login
+│   └── payloads/               # (Generated PowerShell payloads)
 ├── tools/
-│   └── generate_payload.py # Payload generator script
+│   ├── generate_payload.py     # Payload generator script
+│   └── ps_builder.py           # PowerShell payload builder
 ├── utils/
-│   └── crypto.py           # AES encrypt/decrypt helpers
+│   └── crypto.py               # AES encrypt/decrypt helpers
 └── README.md
 ```
 
@@ -315,5 +320,3 @@ GhostC2 is for **authorized red team or academic use only**.
 
 - GitHub: [@wolfwashere](https://github.com/wolfwashere)
 - Project: GhostC2 v1.0
-
-Contributions welcome.
