@@ -11,6 +11,11 @@ import json
 import sys
 from flask import send_from_directory
 from datetime import datetime, UTC
+import platform
+
+def get_default_path():
+    return "C:\\" if platform.system() == "Windows" else "/"
+
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
@@ -395,7 +400,15 @@ browse_results = {}
 def browse_task():
     data = request.json
     hostname = data['hostname']
-    path = data.get('path', 'C:\\' if os.name == 'nt' else '/')
+    raw_path = data.get('path')
+
+    # If path looks like a Windows root on Linux, override it
+    if platform.system() != "Windows" and raw_path and raw_path.startswith("C:\\"):
+        print(f"[WARN] Overriding invalid Windows path sent to Linux: {raw_path}")
+        path = "/"
+    else:
+        path = raw_path or get_default_path()
+
     task_json = json.dumps({"action": "browse", "path": path})
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
