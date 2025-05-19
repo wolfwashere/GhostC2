@@ -209,7 +209,11 @@
                 <input type="checkbox" name="b64encode" id="b64encode" checked>
                 Base64-encode PowerShell payload (recommended for all wrapper types)
                 </label>
-
+                <label>
+                <input type="checkbox" id="evasion_enabled" name="evasion_enabled">
+                <span>Enable AV/Defender Evasion</span>
+                </label>
+                <small style="color: #888; margin-left: 34px;">(Injects AMSI/ETW bypass, disables Defender, obfuscates vars, etc.)</small>
                 <button type="submit">Generate Dropper</button>
             </form>
             {% if output_path %}
