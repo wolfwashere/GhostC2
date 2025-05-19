@@ -191,6 +191,32 @@
         #file-browser-title { color: #b9f9c2; margin-bottom: 6px; }
         #file-browser-path { margin-bottom:12px; color: #aaa; font-size: 0.99em;}
         #file-browser-table { margin-top:10px; }
+        /* ----------- */
+        /* NEW: Fix Task Table Overflow */
+        .task-table-container {
+            max-width: 100%;
+            overflow-x: auto;
+            margin-top: 10px;
+        }
+        #task-table th,
+        #task-table td {
+            white-space: pre-wrap;
+            word-break: break-word;
+            max-width: 340px;
+            vertical-align: top;
+        }
+        #task-table td:nth-child(5), #task-table th:nth-child(5) {
+            max-width: 330px;
+            min-width: 110px;
+            overflow-wrap: break-word;
+            word-break: break-all;
+            white-space: pre-wrap;
+        }
+        #task-table pre {
+            white-space: pre-wrap;
+            word-break: break-word;
+            max-width: 300px;
+        }
     </style>
 </head>
 <body>
@@ -203,7 +229,6 @@
             <a href="/upload">Upload</a>
             <a href="/generate_ps_payload" target="_blank">PowerShell Payload</a>
             <a href="/generate_ps">Generate PS Dropper</a>
-
         </nav>
         <div class="theme-switcher">
             <button onclick="setTheme('green')" class="active">🟢</button>
@@ -250,28 +275,30 @@
                 <button onclick="filterTasks('dispatched')">Dispatched</button>
                 <button onclick="filterTasks('done')">Done</button>
             </div>
-            <table id="task-table">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Hostname</th>
-                        <th>Command</th>
-                        <th>Status</th>
-                        <th>Result</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for task in tasks %}
-                    <tr onclick="openTaskModal('{{ task[0] }}', '{{ task[1] }}', '{{ task[2] }}', '{{ task[3] }}', `{{ task[4] | replace('\n', '\\n') }}`)">
-                        <td>{{ task[0] }}</td>
-                        <td>{{ task[1] }}</td>
-                        <td>{{ task[2] }}</td>
-                        <td>{{ task[3] }}</td>
-                        <td><pre>{{ task[4] }}</pre></td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+            <div class="task-table-container">
+                <table id="task-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Hostname</th>
+                            <th>Command</th>
+                            <th>Status</th>
+                            <th>Result</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for task in tasks %}
+                        <tr onclick="openTaskModal('{{ task[0] }}', '{{ task[1] }}', '{{ task[2] }}', '{{ task[3] }}', `{{ task[4] | replace('\n', '\\n') }}`)">
+                            <td>{{ task[0] }}</td>
+                            <td>{{ task[1] }}</td>
+                            <td>{{ task[2] }}</td>
+                            <td>{{ task[3] }}</td>
+                            <td><pre>{{ task[4] }}</pre></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
