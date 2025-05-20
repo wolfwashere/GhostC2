@@ -4,171 +4,34 @@
     <meta charset="UTF-8">
     <title>Generate PS Dropper - GhostC2</title>
     <style>
+        /* ... keep all your styles unchanged ... */
         :root {
             --accent: #22ff44;
             --status-glow: 0 0 10px 2px #22ff4499;
         }
-        body {
-            background: #111316;
-            color: #e3e3e3;
-            font-family: 'Inter', Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            min-height: 100vh;
-        }
-        #sidebar {
-            width: 190px;
-            background: #181a1f;
-            border-right: 1.5px solid #222;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            position: fixed;
-            left: 0; top: 0;
-            z-index: 100;
-        }
-        #sidebar .logo {
-            font-size: 1.18em;
-            font-weight: 700;
-            padding: 30px 20px 36px 24px;
-            color: var(--accent);
-            letter-spacing: 0.04em;
-        }
-        #sidebar nav {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-        }
-        #sidebar a {
-            color: #dadada;
-            text-decoration: none;
-            padding: 13px 30px 13px 24px;
-            font-size: 1em;
-            border-left: 3px solid transparent;
-            font-weight: 500;
-            transition: background 0.12s, border-color 0.14s, color 0.15s;
-        }
-        #sidebar a.active {
-            border-left: 3px solid var(--accent);
-            color: var(--accent);
-            background: #16181d;
-        }
-        #sidebar a:hover {
-            background: #16181d;
-            color: var(--accent);
-        }
-        .theme-switcher {
-            margin: 16px 0 0 24px;
-        }
-        .theme-switcher button {
-            background: transparent;
-            border: none;
-            cursor: pointer;
-            font-size: 1em;
-            margin-right: 7px;
-            color: #888;
-            transition: color 0.12s;
-        }
-        .theme-switcher button.active, .theme-switcher button:hover {
-            color: var(--accent);
-        }
-        #main {
-            margin-left: 190px;
-            padding: 42px 38px 32px 38px;
-            width: 100%;
-            min-height: 100vh;
-        }
-        .ps-container {
-            background: #181a1f;
-            border: 1.5px solid #23262a;
-            border-radius: 13px;
-            max-width: 600px;
-            margin: 0 auto 0 auto;
-            box-shadow: 0 8px 24px #0007;
-            padding: 36px 32px 32px 32px;
-        }
-        h1 {
-            font-size: 1.32em;
-            font-weight: 700;
-            color: #e3e3e3;
-            letter-spacing: 0.01em;
-            margin-bottom: 24px;
-            margin-top: 0;
-            text-align: left;
-        }
-        label {
-            color: #dadada;
-            font-weight: 500;
-            display: block;
-            margin-bottom: 6px;
-            font-size: 1em;
-        }
-        textarea, select, input[type="text"] {
-            width: 100%;
-            background: #111316;
-            color: #e3e3e3;
-            border: 1.5px solid #22ff44;
-            border-radius: 8px;
-            padding: 12px 12px;
-            font-size: 1em;
-            font-family: 'JetBrains Mono', 'Fira Mono', 'Inter', Arial, monospace;
-            margin-bottom: 16px;
-            box-sizing: border-box;
-            transition: border 0.18s;
-        }
-        textarea:focus, select:focus, input:focus {
-            border-color: #c8facc;
-            outline: none;
-        }
-        select {
-            background: #181a1f;
-            color: #22ff44;
-            font-weight: bold;
-        }
-        input[type="text"]::placeholder {
-            color: #6e6e6e;
-            opacity: 0.85;
-        }
-        button[type="submit"] {
-            background: #1b1d22;
-            color: #22ff44;
-            border: 1.5px solid #22ff44;
-            font-weight: 600;
-            font-size: 1.11em;
-            border-radius: 6px;
-            padding: 11px 0;
-            width: 100%;
-            margin-top: 2px;
-            margin-bottom: 4px;
-            cursor: pointer;
-            letter-spacing: 0.05em;
-            box-shadow: 0 2px 8px #22ff4420;
-            transition: background 0.18s, color 0.18s, border 0.18s;
-        }
-        button[type="submit"]:hover, button[type="submit"]:focus {
-            background: #191c21;
-            border-color: #c8facc;
-            color: #c8facc;
-        }
-        .download-link {
-            margin-top: 25px;
-            display: block;
-            color: #22ff44;
-            font-size: 1.1em;
-            font-weight: 700;
-            text-align: center;
-            text-shadow: 0 1px 6px #000a;
-            text-decoration: none;
-            transition: color 0.14s;
-        }
-        .download-link:hover {
-            color: #e3e3e3;
-        }
-        @media (max-width: 650px) {
-            #main { padding: 18px 4vw; }
-            .ps-container { padding: 20px 3vw; }
-        }
+        body { background: #111316; color: #e3e3e3; font-family: 'Inter', Arial, sans-serif; margin: 0; padding: 0; display: flex; min-height: 100vh; }
+        #sidebar { width: 190px; background: #181a1f; border-right: 1.5px solid #222; min-height: 100vh; display: flex; flex-direction: column; position: fixed; left: 0; top: 0; z-index: 100; }
+        #sidebar .logo { font-size: 1.18em; font-weight: 700; padding: 30px 20px 36px 24px; color: var(--accent); letter-spacing: 0.04em; }
+        #sidebar nav { flex: 1; display: flex; flex-direction: column; }
+        #sidebar a { color: #dadada; text-decoration: none; padding: 13px 30px 13px 24px; font-size: 1em; border-left: 3px solid transparent; font-weight: 500; transition: background 0.12s, border-color 0.14s, color 0.15s; }
+        #sidebar a.active { border-left: 3px solid var(--accent); color: var(--accent); background: #16181d; }
+        #sidebar a:hover { background: #16181d; color: var(--accent); }
+        .theme-switcher { margin: 16px 0 0 24px; }
+        .theme-switcher button { background: transparent; border: none; cursor: pointer; font-size: 1em; margin-right: 7px; color: #888; transition: color 0.12s; }
+        .theme-switcher button.active, .theme-switcher button:hover { color: var(--accent); }
+        #main { margin-left: 190px; padding: 42px 38px 32px 38px; width: 100%; min-height: 100vh; }
+        .ps-container { background: #181a1f; border: 1.5px solid #23262a; border-radius: 13px; max-width: 600px; margin: 0 auto 0 auto; box-shadow: 0 8px 24px #0007; padding: 36px 32px 32px 32px; }
+        h1 { font-size: 1.32em; font-weight: 700; color: #e3e3e3; letter-spacing: 0.01em; margin-bottom: 24px; margin-top: 0; text-align: left; }
+        label { color: #dadada; font-weight: 500; display: block; margin-bottom: 6px; font-size: 1em; }
+        textarea, select, input[type="text"], input[type="number"] { width: 100%; background: #111316; color: #e3e3e3; border: 1.5px solid #22ff44; border-radius: 8px; padding: 12px 12px; font-size: 1em; font-family: 'JetBrains Mono', 'Fira Mono', 'Inter', Arial, monospace; margin-bottom: 16px; box-sizing: border-box; transition: border 0.18s; }
+        textarea:focus, select:focus, input:focus { border-color: #c8facc; outline: none; }
+        select { background: #181a1f; color: #22ff44; font-weight: bold; }
+        input[type="text"]::placeholder { color: #6e6e6e; opacity: 0.85; }
+        button[type="submit"] { background: #1b1d22; color: #22ff44; border: 1.5px solid #22ff44; font-weight: 600; font-size: 1.11em; border-radius: 6px; padding: 11px 0; width: 100%; margin-top: 2px; margin-bottom: 4px; cursor: pointer; letter-spacing: 0.05em; box-shadow: 0 2px 8px #22ff4420; transition: background 0.18s, color 0.18s, border 0.18s; }
+        button[type="submit"]:hover, button[type="submit"]:focus { background: #191c21; border-color: #c8facc; color: #c8facc; }
+        .download-link { margin-top: 25px; display: block; color: #22ff44; font-size: 1.1em; font-weight: 700; text-align: center; text-shadow: 0 1px 6px #000a; text-decoration: none; transition: color 0.14s; }
+        .download-link:hover { color: #e3e3e3; }
+        @media (max-width: 650px) { #main { padding: 18px 4vw; } .ps-container { padding: 20px 3vw; } }
     </style>
 </head>
 <body>
@@ -195,25 +58,37 @@
             <a>Ensure you change IP and port from generated powershell payload if necessary.</a>
             <br></br>
             <form action="/generate_ps" method="post">
-                <label for="ps1">PowerShell Payload (.ps1 content):</label>
-                <textarea name="ps1" id="ps1" rows="8" required placeholder="Paste your generated .ps1 payload here..."></textarea>
-                <label for="format">Wrapper Format:</label>
-                <select name="format" id="format" required>
-                    <option value="bat">.bat (Batch File)</option>
-                    <option value="hta">.hta (HTML Application)</option>
-                    <option value="vbs">.vbs (VBScript)</option>
-                </select>
-                <label for="filename">Output Filename (optional):</label>
-                <input type="text" name="filename" id="filename" placeholder="e.g. invoice_viewer.hta">
                 <label>
-                <input type="checkbox" name="b64encode" id="b64encode" checked>
-                Base64-encode PowerShell payload (recommended for all wrapper types)
+                    <input type="checkbox" id="use_builder" name="use_builder" onchange="toggleBuilder()">
+                    <span style="font-weight:600;color:#22ff44;">Generate randomized obfuscated reverse shell</span>
                 </label>
-                <label>
-                <input type="checkbox" id="evasion_enabled" name="evasion_enabled">
-                <span>Enable AV/Defender Evasion</span>
-                </label>
-                <small style="color: #888; margin-left: 34px;">(Injects AMSI/ETW bypass, disables Defender, obfuscates vars, etc.)</small>
+                <div id="builder_fields" style="display:none;">
+                    <label for="host">C2 Host/IP:</label>
+                    <input type="text" id="host" name="host" value="localhost" placeholder="e.g. 192.168.1.100">
+                    <label for="port">Port:</label>
+                    <input type="number" id="port" name="port" value="1443" min="1" max="65535">
+                </div>
+                <div id="manual_fields">
+                    <label for="ps1">PowerShell Payload (.ps1 content):</label>
+                    <textarea name="ps1" id="ps1" rows="8" required placeholder="Paste your generated .ps1 payload here..."></textarea>
+                    <label for="format">Wrapper Format:</label>
+                    <select name="format" id="format" required>
+                        <option value="bat">.bat (Batch File)</option>
+                        <option value="hta">.hta (HTML Application)</option>
+                        <option value="vbs">.vbs (VBScript)</option>
+                    </select>
+                    <label for="filename">Output Filename (optional):</label>
+                    <input type="text" name="filename" id="filename" placeholder="e.g. invoice_viewer.hta">
+                    <label>
+                        <input type="checkbox" name="b64encode" id="b64encode" checked>
+                        Base64-encode PowerShell payload (recommended for all wrapper types)
+                    </label>
+                    <label>
+                        <input type="checkbox" id="evasion_enabled" name="evasion_enabled">
+                        <span>Enable AV/Defender Evasion</span>
+                    </label>
+                    <small style="color: #888; margin-left: 34px;">(Injects AMSI/ETW bypass, disables Defender, obfuscates vars, etc.)</small>
+                </div>
                 <button type="submit">Generate Dropper</button>
             </form>
             {% if output_path %}
@@ -241,7 +116,17 @@
         window.onload = function() {
             let saved = localStorage.getItem("ghostc2-theme");
             if (saved) setTheme(saved);
+            toggleBuilder();
         };
+
+        // Show/hide builder/manual fields depending on checkbox
+        function toggleBuilder() {
+            var builder = document.getElementById("use_builder").checked;
+            document.getElementById("builder_fields").style.display = builder ? "block" : "none";
+            document.getElementById("manual_fields").style.display = builder ? "none" : "block";
+            // If using builder, make ps1 box not required, else required
+            document.getElementById("ps1").required = !builder;
+        }
     </script>
 </body>
 </html>
