@@ -87,6 +87,12 @@ Password: ghostpass123
 
 ## 👾 Payloads
 
+                                  
+  ![image](https://github.com/user-attachments/assets/16f903da-f6fd-49eb-bc9d-dcee143c7c3d)
+
+
+
+
 ### ✅ WebSocket Agent *(experimental – not recommended for active use)*
 
 ```bash
@@ -166,6 +172,9 @@ File exfil:
 
 GhostC2 includes a web-based console for interacting with beacons in real-time.
 
+![image](https://github.com/user-attachments/assets/1005c816-3c41-4da1-930d-c655116b73ab)
+
+
 ### ✅ Features
 
 * WebSocket-powered command/result loop
@@ -210,6 +219,9 @@ Agent will:
 
 ## 🧬 Worm Propagation Mode
 
+![image](https://github.com/user-attachments/assets/c05035b3-a952-451f-b3c1-01ff8eac7fed)
+
+
 Payloads generated with `--worm` will:
 
 * Scan local subnet for port 445
@@ -224,6 +236,8 @@ Useful for:
 ---
 
 ## 🔧 PowerShell Payload Generator
+
+
 
 GhostC2 now supports polymorphic PowerShell reverse shell payloads for Windows agents.
 
@@ -292,6 +306,9 @@ port = 1443
 ---
 
 ## 🧰 PowerShell Dropper Generator (**NEW**)
+
+![image](https://github.com/user-attachments/assets/2b45beea-eced-435f-be8b-df07f5516f1b)
+
 
 GhostC2 now supports **one-click, base64-encoded PowerShell droppers** for Windows phishing and lateral movement, in `.bat`, `.hta`, and `.vbs` formats.
 
