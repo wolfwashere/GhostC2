@@ -22,7 +22,9 @@ def junk_code():
         f"${rand_name()} = '{rand_name(3)}'",
         f"# {rand_name(4)}"
     ]
-    return random.choice(j) + random_whitespace()
+    # Always ensure it ends with a newline!
+    return random.choice(j) + random_whitespace() + "\n"
+
 
 def amsi_bypass_variants(var):
     variant1 = (
