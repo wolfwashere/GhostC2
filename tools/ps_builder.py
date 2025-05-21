@@ -87,6 +87,7 @@ def generate_obfuscated_ps(host="localhost", port=1443, write_file=True):
         junk_code()
     )
 
+
     print("=== CORE SHELL ===")
     print(core_shell)
     print("==================")
