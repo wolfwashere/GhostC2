@@ -65,7 +65,6 @@ def generate_obfuscated_ps(host="localhost", port=1443, write_file=True):
         + junk_code()
     )
 
-
     # --- Loader: base64 only ---
     core_shell_bytes = core_shell.encode('utf-8')
     core_shell_b64 = base64.b64encode(core_shell_bytes).decode()
