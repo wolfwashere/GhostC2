@@ -189,8 +189,11 @@ GhostC2 includes a web-based console for interacting with beacons in real-time.
 
 GhostC2 now supports an interactive file browser for any active beacon, fully compatible with obfuscation and polymorphic builds.
 
+![image](https://github.com/user-attachments/assets/58740671-32e9-4a0f-8b94-6b2237e63a1a)
+
+
 * Browse directory trees live in the dashboard
-* Supports both Linux and Windows paths
+* Supports both Linux/Mac and Windows paths
 * Handles missing/ghost files gracefully
 * Uses structured JSON tasks for full stealth
 
