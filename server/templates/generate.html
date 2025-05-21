@@ -187,6 +187,12 @@
       <label for="resulturl">Result URL</label>
       <input type="text" id="resulturl" name="resulturl" value="http://localhost:8080/result" required />
 
+      <label for="aes_key">AES Encryption Key (Base64, 32-byte):</label>
+      <input type="text" id="aes_key" name="aes_key" placeholder="Leave blank to auto-generate" />
+
+      <button type="button" onclick="generateAESKey()">🔐 Generate AES Key</button>
+
+
       <label for="filename">Payload Filename (without extension)</label>
       <input type="text" id="filename" name="filename" placeholder="Leave blank for auto" />
 
@@ -248,6 +254,13 @@
       .catch(() => {
         document.getElementById('server-ip').value = 'Unavailable';
       });
+
+    function generateAESKey() {
+      const array = new Uint8Array(32);
+      window.crypto.getRandomValues(array);
+      const key = btoa(String.fromCharCode(...array));
+      document.getElementById('aes_key').value = key;
+    }
   </script>
 </body>
 </html>

