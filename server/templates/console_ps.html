@@ -153,7 +153,7 @@
         socket.on('ps_output', data => {
             console.log("[ps_output]", data);
             const selectedHost = hostSelect.value;
-            if (data.hostname === selectedHost) {
+            if (data.hostname.toLowerCase() === selectedHost.toLowerCase()) {
                 const resultLine = document.createElement('pre');
                 resultLine.textContent = data.output;
                 resultLine.className = 'console-result';
