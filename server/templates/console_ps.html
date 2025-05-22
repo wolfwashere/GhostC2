@@ -151,6 +151,7 @@
         });
 
         socket.on('ps_output', data => {
+            console.log("[ps_output]", data);
             const selectedHost = hostSelect.value;
             if (data.hostname === selectedHost) {
                 const resultLine = document.createElement('pre');
