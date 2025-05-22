@@ -536,6 +536,14 @@ def generate_ps_payload():
 
     return render_template('generate_ps.html')
 
+@app.route('/generate_ps_payload/download', methods=['GET'])
+@login_required
+def download_ps_payload():
+    from tools.ps_builder import generate_polymorphic_ps
+    filename = generate_polymorphic_ps()
+    return send_from_directory('payloads', filename, as_attachment=True)
+
+
 @app.route('/api/browse', methods=['POST'])
 def browse_task():
     data = request.json

